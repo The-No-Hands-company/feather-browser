@@ -51,3 +51,19 @@ fn test_malformed_url_returned_unchanged() {
     let bad = "not-a-url";
     assert_eq!(Privacy::strip_tracking_params(bad), bad);
 }
+
+#[test]
+fn test_unknown_utm_param_stripped_by_prefix() {
+    let dirty = "https://example.com/?utm_brand=x&id=42";
+    let clean = Privacy::strip_tracking_params(dirty);
+    assert!(!clean.contains("utm_brand"));
+    assert!(clean.contains("id=42"));
+}
+
+#[test]
+fn test_case_insensitive_tracking_param_stripped() {
+    let dirty = "https://example.com/?FBCLID=abc&page=1";
+    let clean = Privacy::strip_tracking_params(dirty);
+    assert!(!clean.to_lowercase().contains("fbclid"));
+    assert!(clean.contains("page=1"));
+}

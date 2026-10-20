@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+// Non-utm tracking params stripped by exact key match (case-insensitive).
+// All utm_* params are stripped by prefix — no need to list them here.
 const TRACKING_PARAMS: &[&str] = &[
-    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-    "utm_id", "utm_reader", "utm_name", "utm_publ", "utm_swu",
     "fbclid", "gclid", "msclkid", "dclid", "twclid",
     "mc_cid", "mc_eid",
     "ref", "_ga", "_gl",
@@ -13,7 +13,7 @@ pub struct Privacy;
 
 impl Privacy {
     /// Strips known tracking query parameters from a URL.
-    /// Returns the URL unchanged if it cannot be parsed.
+    /// Returns the URL unchanged if it has no query string.
     pub fn strip_tracking_params(url: &str) -> String {
         // Split on fragment first so we can restore it
         let (url_no_frag, fragment) = match url.split_once('#') {
@@ -36,8 +36,8 @@ impl Privacy {
             .unwrap_or("")
             .split('&')
             .filter(|param| {
-                let key = param.split('=').next().unwrap_or("");
-                !TRACKING_PARAMS.iter().any(|&t| key.eq_ignore_ascii_case(t))
+                let key = param.split('=').next().unwrap_or("").to_ascii_lowercase();
+                !key.starts_with("utm_") && !TRACKING_PARAMS.iter().any(|&t| key == t)
             })
             .collect();
 
