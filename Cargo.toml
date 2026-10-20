@@ -1,0 +1,29 @@
+[package]
+name = "feather"
+version = "0.1.0"
+edition = "2021"
+authors = ["The No Hands Company <erichakansson84@gmail.com>"]
+description = "Feather Browser — ultra-lightweight GTK4 browser"
+license = "AGPL-3.0-or-later"
+
+[[bin]]
+name = "feather"
+path = "src/main.rs"
+
+[features]
+default = ["webkit-renderer"]
+webkit-renderer = ["dep:webkit2gtk"]
+feather-renderer = []
+
+[dependencies]
+gtk4 = "0.9"
+webkit2gtk = { version = "2.0", optional = true }
+glib = "0.20"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+env_logger = "0.11"
+
+[dev-dependencies]
+tempfile = "3"
