@@ -7,24 +7,17 @@ use webkit2gtk::{LoadEvent, SettingsExt, WebView, WebViewExt};
 
 struct Inner {
     webview: WebView,
-    /// GTK4 placeholder widget.
-    ///
-    /// webkit2gtk 2.0 targets GTK3 internally, so its `WebView` cannot be
-    /// directly embedded in a GTK4 widget hierarchy. This placeholder is
-    /// returned by `widget()` until the project migrates to webkit2gtk-6.0
-    /// (the GTK4-native binding) or a GTK3/GTK4 bridge is in place.
-    // TODO: replace with actual WebKit GTK4 widget when webkit2gtk-6.0 is adopted.
-    placeholder: gtk4::Box,
     suspended_url: Option<String>,
 }
 
 /// WebKit-backed PageRenderer. Wraps webkit2gtk::WebView with interior
 /// mutability so all PageRenderer methods take &self.
 ///
-/// **Compatibility note**: webkit2gtk 2.0 is GTK3-based; the `widget()` method
-/// returns a GTK4 placeholder box. All navigation and scripting calls are
-/// forwarded to the underlying WebView. Upgrade to webkit2gtk-6.0 for full
-/// GTK4 widget integration.
+/// `webkit2gtk = "2.0"` in Cargo.toml links against the `webkit2gtk-4.1`
+/// system library (GTK4-native). The Rust crate exposes `gtk::Widget` (glib 0.18)
+/// at the type level, but `widget()` bridges to `gtk4::Widget` via an unsafe
+/// pointer cast across the glib 0.18 / glib 0.20 crate boundary — safe because
+/// both versions wrap the same underlying GTK4 `GtkWidget` C struct.
 #[derive(Clone)]
 pub struct WebKitRenderer {
     inner: Rc<RefCell<Inner>>,
@@ -37,16 +30,12 @@ impl WebKitRenderer {
         if let Some(settings) = WebViewExt::settings(&webview) {
             settings.set_enable_javascript(true);
             settings.set_enable_webgl(true);
-            // TODO: set_enable_media requires webkit2gtk feature "v2_26"; add it to
-            // Cargo.toml's webkit2gtk features = ["v2_26"] to enable this call.
+            settings.set_enable_media(true); // requires webkit2gtk feature "v2_26" (included via "v2_40")
             settings.set_allow_modal_dialogs(false);
         }
-        // TODO: replace with a real GTK4-native WebKit widget once webkit2gtk-6.0 is used.
-        let placeholder = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         Self {
             inner: Rc::new(RefCell::new(Inner {
                 webview,
-                placeholder,
                 suspended_url: None,
             })),
         }
@@ -107,10 +96,23 @@ impl PageRenderer for WebKitRenderer {
     }
 
     fn widget(&self) -> gtk4::Widget {
-        // TODO: webkit2gtk 2.0 targets GTK3; cannot directly embed its WebView in GTK4.
-        // Returns a GTK4 Box placeholder. Replace when webkit2gtk-6.0 is adopted.
-        use gtk4::prelude::Cast;
-        self.inner.borrow().placeholder.clone().upcast()
+        let inner = self.inner.borrow();
+        // SAFETY: webkit2gtk 2.0.x links against webkit2gtk-4.1 (GTK4 C library).
+        // The underlying GObject IS a GTK4 GtkWidget. The Rust crate wraps it in
+        // `gtk::Widget` (glib 0.18) but both glib 0.18 and glib 0.20 represent a
+        // GObject as an opaque pointer to the same C type. We cast the raw
+        // *mut WebKitWebView → *mut GtkWidget (valid via C-level GObject inheritance)
+        // then call `from_glib_none` which calls `g_object_ref`, giving the caller
+        // an independent owning reference to the same GTK4 widget.
+        unsafe {
+            use gtk4::glib::translate::FromGlibPtrNone;
+            use webkit2gtk::glib::translate::ToGlibPtr;
+            let stash =
+                ToGlibPtr::<*mut webkit2gtk::ffi::WebKitWebView>::to_glib_none(&inner.webview);
+            let raw_gtk4 =
+                stash.0 as *mut std::ffi::c_void as *mut gtk4::ffi::GtkWidget;
+            gtk4::Widget::from_glib_none(raw_gtk4)
+        }
     }
 
     fn set_zoom(&self, factor: f64) {
@@ -134,10 +136,14 @@ impl PageRenderer for WebKitRenderer {
 
     fn run_script(&self, js: &str) {
         let inner = self.inner.borrow();
-        // webkit2gtk 2.0 uses `run_javascript`; `evaluate_javascript` requires v2_40.
-        inner
-            .webview
-            .run_javascript(js, webkit2gtk::gio::Cancellable::NONE, |_result| {});
+        // evaluate_javascript is the preferred API since WebKit 2.40 (run_javascript is deprecated).
+        inner.webview.evaluate_javascript(
+            js,
+            None,
+            None,
+            webkit2gtk::gio::Cancellable::NONE,
+            |_result| {},
+        );
     }
 
     fn connect_url_changed(&self, f: Box<dyn Fn(String) + 'static>) {
