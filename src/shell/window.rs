@@ -8,7 +8,6 @@ use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GBox, Orientation, Stack};
 use std::cell::RefCell;
 use std::rc::Rc;
-use glib;
 
 #[cfg(feature = "webkit-renderer")]
 use crate::bridge::WebKitRenderer;

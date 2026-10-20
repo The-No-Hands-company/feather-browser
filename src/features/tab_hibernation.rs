@@ -18,7 +18,9 @@ impl HibernationManager {
         }
     }
 
-    /// Test constructor: treats every recorded idle tab as immediately overdue.
+    /// Test-only constructor: treats every recorded idle tab as immediately overdue.
+    /// Do NOT call from production code — it sets delay to zero, hibernating all idle
+    /// tabs on the first check regardless of how long they have been idle.
     pub fn new_with_elapsed(_elapsed: Duration) -> Self {
         Self {
             delay: Duration::from_secs(0),
