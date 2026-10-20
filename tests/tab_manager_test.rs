@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// tests/tab_manager_test.rs — just the import, full tests in Task 6
+// tests/tab_manager_test.rs — bridge, tab model, and TabManager integration tests
 // This forces the trait + mock to exist and compile
 use feather::bridge::{MockRenderer, PageRenderer};
 use feather::shell::tab_manager::{Tab, TabState};
