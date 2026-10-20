@@ -60,17 +60,18 @@ fn parse_hosts_line(line: &str) -> Option<String> {
 
 fn extract_domain(url: &str) -> Option<String> {
     let after_scheme = url.split_once("://")?.1;
-    // Strip userinfo (user:pass@host)
-    let after_userinfo = match after_scheme.split_once('@') {
-        Some((_, rest)) => rest,
-        None => after_scheme,
-    };
-    // Take up to the first of '/', '?', '#'
-    let host = after_userinfo
+    // Extract authority only (everything before the first '/', '?', or '#').
+    // Userinfo check must happen within authority to avoid matching '@' in paths/queries.
+    let authority = after_scheme
         .split(|c| c == '/' || c == '?' || c == '#')
         .next()?;
+    // Strip userinfo (user:pass@host) — rsplit so "a@b@host" gives "host"
+    let host_and_port = match authority.rsplit_once('@') {
+        Some((_, rest)) => rest,
+        None => authority,
+    };
     // Strip port
-    let host = host.split(':').next()?;
+    let host = host_and_port.split(':').next()?;
     // Strip trailing dot (FQDN)
     let host = host.trim_end_matches('.');
     if host.is_empty() { return None; }

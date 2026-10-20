@@ -83,22 +83,19 @@ impl FeatherWindow {
                     (rd_c1.borrow())();
                 };
 
-                // on_close: stop renderer, remove widget from stack, remove tab, then redraw
+                // on_close: remove widget from stack, remove tab (drops renderer), then redraw.
+                // renderer.stop() is intentionally omitted here — calling it while holding
+                // borrow_mut risks a BorrowMutError if WebKit emits url-changed synchronously.
+                // The renderer is dropped with the Tab, cancelling in-flight loads.
                 let mgr_c2 = Rc::clone(&mgr);
                 let rd_c2 = Rc::clone(&rd);
                 let stack_c2 = Rc::clone(&stack);
                 let on_close = move |id: TabId| {
-                    {
-                        let mut mgr_ref = mgr_c2.borrow_mut();
-                        if let Some(tab) = mgr_ref.get_tab_mut(id) {
-                            tab.renderer.stop();
-                        }
-                        mgr_ref.remove_tab(id);
-                    }
                     let page_name = format!("tab-{}", id);
                     if let Some(child) = stack_c2.child_by_name(&page_name) {
                         stack_c2.remove(&child);
                     }
+                    { mgr_c2.borrow_mut().remove_tab(id); }
                     (rd_c2.borrow())();
                 };
 
@@ -125,6 +122,7 @@ impl FeatherWindow {
                     let mgr_u = Rc::clone(&mgr_c3);
                     let rd_u = Rc::clone(&rd_c3);
                     let mgr_t = Rc::clone(&mgr_c3);
+                    let rd_t = Rc::clone(&rd_c3);
                     {
                         let mut m = mgr_c3.borrow_mut();
                         if let Some(tab) = m.get_tab_mut(id) {
@@ -138,6 +136,7 @@ impl FeatherWindow {
                                 if let Some(t) = mgr_t.borrow_mut().get_tab_mut(id) {
                                     t.title = title;
                                 }
+                                (rd_t.borrow())();
                             }));
                         }
                     }
@@ -166,6 +165,7 @@ impl FeatherWindow {
             let mgr_u = Rc::clone(&tab_manager);
             let rd_u = Rc::clone(&redraw_fn);
             let mgr_t = Rc::clone(&tab_manager);
+            let rd_t = Rc::clone(&redraw_fn);
             {
                 let mut mgr_ref = tab_manager.borrow_mut();
                 if let Some(tab) = mgr_ref.get_tab_mut(id) {
@@ -179,6 +179,7 @@ impl FeatherWindow {
                         if let Some(t) = mgr_t.borrow_mut().get_tab_mut(id) {
                             t.title = title;
                         }
+                        (rd_t.borrow())();
                     }));
                 }
             }
