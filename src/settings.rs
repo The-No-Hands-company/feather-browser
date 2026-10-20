@@ -32,10 +32,17 @@ impl Settings {
     }
 
     pub fn load_from(path: &str) -> Self {
-        fs::read_to_string(path)
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
+        let text = match fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(_) => return Self::default(),
+        };
+        match serde_json::from_str(&text) {
+            Ok(settings) => settings,
+            Err(e) => {
+                log::warn!("Corrupt config at {}: {}. Using defaults.", path, e);
+                Self::default()
+            }
+        }
     }
 
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
