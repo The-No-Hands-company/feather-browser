@@ -3,7 +3,7 @@ use super::PageRenderer;
 use std::cell::RefCell;
 use std::rc::Rc;
 // webkit2gtk 2.0 does not expose a `prelude` module; import traits directly.
-use webkit2gtk::{LoadEvent, SettingsExt, WebView, WebViewExt};
+use webkit2gtk::{LoadEvent, PolicyDecisionType, SettingsExt, WebView, WebViewExt};
 
 struct Inner {
     webview: WebView,
@@ -24,6 +24,9 @@ pub struct WebKitRenderer {
 }
 
 impl WebKitRenderer {
+    // `NavigationPolicyDecisionExt::request` is deprecated since webkit2gtk 2.6;
+    // we target 2.0.x where it is the correct API.
+    #[allow(deprecated)]
     pub fn new() -> Self {
         let webview = WebView::new();
         // Sensible security defaults.
@@ -33,6 +36,29 @@ impl WebKitRenderer {
             settings.set_enable_media(true); // requires webkit2gtk feature "v2_26" (included via "v2_40")
             settings.set_allow_modal_dialogs(false);
         }
+        // Wire ad blocker into WebKit policy decisions
+        let ad_blocker = Rc::new(crate::features::ad_blocker::AdBlocker::load(
+            &format!("{}/.config/feather/blocklist.txt",
+                std::env::var("HOME").unwrap_or_default())
+        ));
+        let blocker_ref = Rc::clone(&ad_blocker);
+        webview.connect_decide_policy(move |_view, decision, decision_type| {
+            use webkit2gtk::glib::Cast;
+            use webkit2gtk::{NavigationPolicyDecisionExt, PolicyDecisionExt, URIRequestExt};
+            if decision_type == PolicyDecisionType::NavigationAction {
+                if let Ok(nav) = decision.clone().downcast::<webkit2gtk::NavigationPolicyDecision>() {
+                    if let Some(req) = nav.request() {
+                        if let Some(uri) = req.uri() {
+                            if blocker_ref.is_blocked(uri.as_str()) {
+                                nav.ignore();
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            false
+        });
         Self {
             inner: Rc::new(RefCell::new(Inner {
                 webview,

@@ -1,0 +1,15 @@
+# Feather Browser default blocklist
+# Format: domain or "0.0.0.0 domain"
+0.0.0.0 doubleclick.net
+0.0.0.0 googleadservices.com
+0.0.0.0 googlesyndication.com
+0.0.0.0 adnxs.com
+0.0.0.0 ads.twitter.com
+0.0.0.0 facebook.com/tr
+0.0.0.0 analytics.google.com
+0.0.0.0 google-analytics.com
+0.0.0.0 googletagmanager.com
+0.0.0.0 hotjar.com
+0.0.0.0 mixpanel.com
+0.0.0.0 segment.io
+0.0.0.0 scorecardresearch.com
