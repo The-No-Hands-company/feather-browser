@@ -59,11 +59,20 @@ fn parse_hosts_line(line: &str) -> Option<String> {
 }
 
 fn extract_domain(url: &str) -> Option<String> {
-    // Fast path: find "://" then take up to next "/"
     let after_scheme = url.split_once("://")?.1;
-    let host = after_scheme.split('/').next()?;
-    // Strip port if present
+    // Strip userinfo (user:pass@host)
+    let after_userinfo = match after_scheme.split_once('@') {
+        Some((_, rest)) => rest,
+        None => after_scheme,
+    };
+    // Take up to the first of '/', '?', '#'
+    let host = after_userinfo
+        .split(|c| c == '/' || c == '?' || c == '#')
+        .next()?;
+    // Strip port
     let host = host.split(':').next()?;
+    // Strip trailing dot (FQDN)
+    let host = host.trim_end_matches('.');
     if host.is_empty() { return None; }
     Some(host.to_lowercase())
 }

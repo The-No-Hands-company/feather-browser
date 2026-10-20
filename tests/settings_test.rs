@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// The crate is bin-only (no lib target), so the settings module is included
-// directly by path rather than imported as `feather::settings`.
+// settings.rs is included by path so this test file can run in isolation
+// without depending on the lib crate's full feature set.
 #[path = "../src/settings.rs"]
 #[allow(dead_code)]
 mod settings;

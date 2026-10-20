@@ -37,7 +37,7 @@ impl WebKitRenderer {
             settings.set_allow_modal_dialogs(false);
         }
         // Wire ad blocker into WebKit policy decisions
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         let config_dir = format!("{}/.config/feather", home);
         crate::features::ad_blocker::AdBlocker::bundle_default_blocklist(&config_dir);
         let ad_blocker = Rc::new(crate::features::ad_blocker::AdBlocker::load(
@@ -160,9 +160,9 @@ impl PageRenderer for WebKitRenderer {
     }
 
     fn resume(&self) {
-        let inner = self.inner.borrow();
-        if let Some(ref url) = inner.suspended_url {
-            inner.webview.load_uri(url);
+        let mut inner = self.inner.borrow_mut();
+        if let Some(url) = inner.suspended_url.take() {
+            inner.webview.load_uri(&url);
         }
     }
 

@@ -83,11 +83,22 @@ impl FeatherWindow {
                     (rd_c1.borrow())();
                 };
 
-                // on_close: remove tab, then redraw
+                // on_close: stop renderer, remove widget from stack, remove tab, then redraw
                 let mgr_c2 = Rc::clone(&mgr);
                 let rd_c2 = Rc::clone(&rd);
+                let stack_c2 = Rc::clone(&stack);
                 let on_close = move |id: TabId| {
-                    { mgr_c2.borrow_mut().remove_tab(id); }
+                    {
+                        let mut mgr_ref = mgr_c2.borrow_mut();
+                        if let Some(tab) = mgr_ref.get_tab_mut(id) {
+                            tab.renderer.stop();
+                        }
+                        mgr_ref.remove_tab(id);
+                    }
+                    let page_name = format!("tab-{}", id);
+                    if let Some(child) = stack_c2.child_by_name(&page_name) {
+                        stack_c2.remove(&child);
+                    }
                     (rd_c2.borrow())();
                 };
 
@@ -110,6 +121,26 @@ impl FeatherWindow {
                         m.add_tab(&homepage_c, renderer)
                     };
                     stack_c.add_named(&widget, Some(&format!("tab-{}", id)));
+                    // Wire URL and title change callbacks for the new tab
+                    let mgr_u = Rc::clone(&mgr_c3);
+                    let rd_u = Rc::clone(&rd_c3);
+                    let mgr_t = Rc::clone(&mgr_c3);
+                    {
+                        let mut m = mgr_c3.borrow_mut();
+                        if let Some(tab) = m.get_tab_mut(id) {
+                            tab.renderer.connect_url_changed(Box::new(move |url| {
+                                if let Some(t) = mgr_u.borrow_mut().get_tab_mut(id) {
+                                    t.url = url;
+                                }
+                                (rd_u.borrow())();
+                            }));
+                            tab.renderer.connect_title_changed(Box::new(move |title| {
+                                if let Some(t) = mgr_t.borrow_mut().get_tab_mut(id) {
+                                    t.title = title;
+                                }
+                            }));
+                        }
+                    }
                     (rd_c3.borrow())();
                 };
 
@@ -131,6 +162,26 @@ impl FeatherWindow {
                 mgr.add_tab(&settings.homepage, renderer)
             };
             content_stack.add_named(&widget, Some(&format!("tab-{}", id)));
+            // Wire URL and title change callbacks for the initial tab
+            let mgr_u = Rc::clone(&tab_manager);
+            let rd_u = Rc::clone(&redraw_fn);
+            let mgr_t = Rc::clone(&tab_manager);
+            {
+                let mut mgr_ref = tab_manager.borrow_mut();
+                if let Some(tab) = mgr_ref.get_tab_mut(id) {
+                    tab.renderer.connect_url_changed(Box::new(move |url| {
+                        if let Some(t) = mgr_u.borrow_mut().get_tab_mut(id) {
+                            t.url = url;
+                        }
+                        (rd_u.borrow())();
+                    }));
+                    tab.renderer.connect_title_changed(Box::new(move |title| {
+                        if let Some(t) = mgr_t.borrow_mut().get_tab_mut(id) {
+                            t.title = title;
+                        }
+                    }));
+                }
+            }
         }
 
         // Wire toolbar navigate → active renderer load_url

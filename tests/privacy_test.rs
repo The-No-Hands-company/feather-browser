@@ -67,3 +67,11 @@ fn test_case_insensitive_tracking_param_stripped() {
     assert!(!clean.to_lowercase().contains("fbclid"));
     assert!(clean.contains("page=1"));
 }
+
+#[test]
+fn test_ref_param_not_stripped() {
+    // `ref` is a legitimate parameter used by GitHub/GitLab for branch references.
+    let url = "https://github.com/org/repo/blob/main/file.txt?ref=main";
+    let clean = Privacy::strip_tracking_params(url);
+    assert_eq!(clean, url, "?ref=main must not be stripped");
+}

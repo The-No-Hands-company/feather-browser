@@ -5,7 +5,7 @@
 const TRACKING_PARAMS: &[&str] = &[
     "fbclid", "gclid", "msclkid", "dclid", "twclid",
     "mc_cid", "mc_eid",
-    "ref", "_ga", "_gl",
+    "_ga", "_gl",
     "igshid",
 ];
 
