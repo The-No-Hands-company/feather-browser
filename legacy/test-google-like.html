@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google-like Test</title>
+</head>
+<body>
+    <h1>Testing Google-like Scripts</h1>
+    <div id="output"></div>
+    
+    <script>
+        // Test 1: document.documentElement.addEventListener
+        console.log("Test 1: document.documentElement");
+        if (document.documentElement) {
+            console.log("✓ documentElement exists");
+            try {
+                document.documentElement.addEventListener("submit", function(e) {
+                    console.log("Submit event on documentElement");
+                });
+                console.log("✓ addEventListener on documentElement works");
+            } catch (e) {
+                console.log("✗ addEventListener failed:", e.message);
+            }
+        } else {
+            console.log("✗ documentElement is null");
+        }
+        
+        // Test 2: document.body.onload
+        console.log("Test 2: document.body.onload");
+        if (document.body) {
+            console.log("✓ body exists");
+            try {
+                document.body.onload = function() {
+                    console.log("Body onload triggered");
+                };
+                console.log("✓ body.onload assignment works");
+            } catch (e) {
+                console.log("✗ body.onload failed:", e.message);
+            }
+        } else {
+            console.log("✗ body is null");
+        }
+        
+        // Test 3: document.getElementById
+        console.log("Test 3: document.getElementById");
+        const el = document.getElementById("output");
+        if (el) {
+            console.log("✓ getElementById works");
+            try {
+                el.onclick = function() { console.log("Clicked!"); };
+                console.log("✓ onclick assignment works");
+            } catch (e) {
+                console.log("✗ onclick failed:", e.message);
+            }
+        } else {
+            console.log("✗ getElementById returned null");
+        }
+        
+        // Test 4: document.body.clientWidth
+        console.log("Test 4: clientWidth");
+        if (document.body) {
+            try {
+                const width = document.body.clientWidth;
+                console.log("✓ body.clientWidth =", width);
+            } catch (e) {
+                console.log("✗ clientWidth failed:", e.message);
+            }
+        }
+        
+        // Test 5: querySelector
+        console.log("Test 5: querySelector");
+        try {
+            const qEl = document.querySelector("div");
+            if (qEl) {
+                console.log("✓ querySelector found div");
+            } else {
+                console.log("✗ querySelector returned null");
+            }
+        } catch (e) {
+            console.log("✗ querySelector failed:", e.message);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+// Test generator execution directly
+use pronbrow_engine::*;
+use std::collections::HashMap;
+
+fn main() {
+    println!("=== Generator PC Resumption Test ===\n");
+    
+    let mut engine = BrowserEngine::new();
+    
+    // Read and execute the test script
+    let test_code = std::fs::read_to_string("test_gen_simple.js")
+        .expect("Failed to read test_gen_simple.js");
+    
+    println!("Executing generator tests...\n");
+    match engine.execute_script(&test_code) {
+        Ok(_) => println!("\n✅ Test completed successfully"),
+        Err(e) => println!("\n❌ Test failed: {}", e),
+    }
+}

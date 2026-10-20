@@ -1,0 +1,127 @@
+[package]
+name = "pronbrow-engine"
+version = "0.5.0"
+edition = "2021"
+authors = ["The No-hands Company"]
+description = "A modern web browser engine built from scratch with 720+ features including HTML5 media, WebGL, WebRTC, Service Workers, IndexedDB, and comprehensive Web APIs"
+
+[dependencies]
+# Networking
+reqwest = { version = "0.11", features = ["blocking", "rustls-tls"] }
+url = "2.5"
+
+# Image encoding
+png = "0.17"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Utilities
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+log = "0.4"
+env_logger = "0.11"
+fontdue = "0.9.3"
+ab_glyph = "0.2.32"
+image = "0.25.8"
+rand = "0.8"
+uuid = { version = "1.18.1", features = ["v4"] }
+napi = { version = "3.5.2", optional = true }
+napi-derive = { version = "3.3.3", optional = true }
+base64 = "0.22"
+urlencoding = "2.1"
+
+[lib]
+name = "pronbrow_engine"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "pronbrow"
+path = "src/main.rs"
+
+[[bin]]
+name = "pronbrow-cli"
+path = "src/bin/pronbrow-cli.rs"
+required-features = ["cli-minimal"]
+
+[features]
+default = ["gui-standard"]
+
+# ============================================================================
+# CLI Modes - Terminal-based browsing with minimal resource usage
+# ============================================================================
+cli-minimal = ["html-text-only", "dom-minimal", "js-core"]
+cli-standard = ["cli-minimal", "ansi-colors", "css-text"]
+cli-full = ["cli-standard", "terminal-graphics", "canvas-ascii"]
+
+# ============================================================================
+# GUI Modes - Graphical browser with progressive feature loading
+# ============================================================================
+gui-minimal = ["html-full", "dom-full", "rendering-basic", "layout-basic", "css-core"]
+gui-standard = ["gui-minimal", "css-full", "canvas", "forms", "js-full"]
+gui-full = ["gui-standard", "webgl", "webrtc", "media", "service-workers", "indexeddb"]
+
+# ============================================================================
+# Core Subsystems - Granular feature control
+# ============================================================================
+# HTML/DOM
+html-text-only = []    # Text extraction only, no styling
+html-full = []         # Full HTML5 parser
+
+dom-minimal = []       # Lightweight indexed DOM
+dom-full = []          # Full W3C DOM with Rc<RefCell<>>
+
+# JavaScript
+js-core = []           # Basic JS execution (variables, functions)
+js-full = ["js-core"]  # Full ES2025 (async/await, generators, promises)
+
+# CSS
+css-text = []          # Text colors and basic styles only
+css-core = ["css-text"] # Basic CSS (box model, colors, fonts)
+css-full = ["css-core", "css-animations", "css-transforms", "css-grid", "css-flexbox"]
+css-animations = []
+css-transforms = []
+css-grid = []
+css-flexbox = []
+
+# Layout
+layout-basic = []      # Simple block layout
+layout-full = ["layout-basic", "css-flexbox", "css-grid"]
+
+# Rendering
+rendering-basic = []   # Software rendering
+rendering-gpu = []     # GPU acceleration (wgpu)
+
+# Terminal support
+ansi-colors = []       # ANSI color codes
+terminal-graphics = [] # Kitty/iTerm2/Sixel graphics
+canvas-ascii = []      # ASCII art canvas rendering
+
+# Web features
+canvas = []
+forms = []
+webgl = ["rendering-gpu"]
+webrtc = []
+media = []
+service-workers = []
+indexeddb = []
+
+# Network
+networking-minimal = []  # HTTP/1.1 only
+networking-full = ["networking-minimal", "websockets", "http2"]
+websockets = []
+http2 = []
+
+# Images (opt-in to reduce binary size)
+image-png = []
+image-jpeg = []
+image-webp = []
+image-svg = []
+image-all = ["image-png", "image-jpeg", "image-webp", "image-svg"]
+
+# Node.js bindings
+napi = ["dep:napi", "dep:napi-derive"]
+
+[build-dependencies]
+napi-build = "2"

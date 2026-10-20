@@ -1,0 +1,14 @@
+// Test async/await rejection handling
+use std::fs;
+
+fn main() {
+    let js_code = fs::read_to_string("test_async_rejection.js")
+        .expect("Failed to read test file");
+    
+    println!("Testing async/await rejection handling...\n");
+    
+    match pronbrow_engine::run_js(&js_code) {
+        Ok(_) => println!("\n✅ Test completed successfully"),
+        Err(e) => println!("\n⚠️ Test completed with error: {}", e),
+    }
+}

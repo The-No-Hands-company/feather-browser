@@ -1,0 +1,25 @@
+{
+  "name": "pronbrow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "npx electron .",
+    "start:engine": "npx electron main-engine.js",
+    "start:dev": "NODE_ENV=development npx electron main-engine.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@napi-rs/cli": "^3.4.1",
+    "canvas": "^3.2.0",
+    "electron": "^39.2.2",
+    "napi-rs": "^0.3.10"
+  },
+  "dependencies": {
+    "@pronbrow/engine": "file:../pronbrow-engine"
+  }
+}

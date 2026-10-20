@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Test Page - PronBrow</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h2 {
+            color: #764ba2;
+            margin-top: 0;
+            font-size: 1.3em;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: scale(1.05);
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        #output {
+            background: #2d3748;
+            color: #48bb78;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            min-height: 100px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .counter {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        input[type="text"] {
+            width: calc(100% - 24px);
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status.success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .status.pending {
+            background: #ed8936;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 PronBrow JavaScript Test Page</h1>
+        <p class="subtitle">Testing JavaScript execution and DOM manipulation</p>
+        
+        <!-- Test 1: Console API -->
+        <div class="test-section">
+            <h2>1. Console API Test</h2>
+            <button onclick="testConsole()">Test Console Methods</button>
+            <span id="console-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 2: DOM Manipulation -->
+        <div class="test-section">
+            <h2>2. DOM Manipulation</h2>
+            <button onclick="testDOM()">Test DOM</button>
+            <div id="dom-output"></div>
+            <span id="dom-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 3: Events -->
+        <div class="test-section">
+            <h2>3. Event Handling</h2>
+            <button id="event-btn">Click Me!</button>
+            <div class="counter" id="click-counter">0</div>
+            <span id="event-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 4: Timers -->
+        <div class="test-section">
+            <h2>4. Timers (setTimeout/setInterval)</h2>
+            <button onclick="testTimers()">Start Timer Test</button>
+            <button onclick="stopTimers()">Stop Timers</button>
+            <div id="timer-output"></div>
+            <span id="timer-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 5: Array & Object Methods -->
+        <div class="test-section">
+            <h2>5. ES6+ Features</h2>
+            <button onclick="testES6()">Test ES6 Features</button>
+            <span id="es6-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 6: Promises -->
+        <div class="test-section">
+            <h2>6. Promises & Async/Await</h2>
+            <button onclick="testPromises()">Test Promises</button>
+            <span id="promise-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 7: Local Storage -->
+        <div class="test-section">
+            <h2>7. Local Storage</h2>
+            <input type="text" id="storage-input" placeholder="Enter text to store...">
+            <button onclick="saveToStorage()">Save</button>
+            <button onclick="loadFromStorage()">Load</button>
+            <button onclick="clearStorage()">Clear</button>
+            <div id="storage-output"></div>
+            <span id="storage-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Test 8: Performance API -->
+        <div class="test-section">
+            <h2>8. Performance API</h2>
+            <button onclick="testPerformance()">Test Performance</button>
+            <span id="perf-status" class="status pending">Not tested</span>
+        </div>
+        
+        <!-- Output Console -->
+        <div class="test-section">
+            <h2>📊 Test Output</h2>
+            <div id="output">Waiting for tests...</div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        let output = document.getElementById('output');
+        let clickCount = 0;
+        let timerInterval = null;
+        let timerTimeout = null;
+        
+        function log(message) {
+            output.textContent += message + '\n';
+            console.log(message);
+        }
+        
+        function clearOutput() {
+            output.textContent = '';
+        }
+        
+        function setStatus(id, success) {
+            const el = document.getElementById(id);
+            el.className = 'status ' + (success ? 'success' : 'pending');
+            el.textContent = success ? '✓ Passed' : 'Failed';
+        }
+        
+        // Test 1: Console API
+        function testConsole() {
+            clearOutput();
+            console.log('Testing console.log()');
+            console.warn('Testing console.warn()');
+            console.error('Testing console.error()');
+            console.info('Testing console.info()');
+            console.debug('Testing console.debug()');
+            console.table([{name: 'Test', value: 123}]);
+            console.assert(true, 'This should not appear');
+            console.assert(false, 'This assertion should appear');
+            log('✓ Console API tests executed');
+            setStatus('console-status', true);
+        }
+        
+        // Test 2: DOM Manipulation
+        function testDOM() {
+            clearOutput();
+            const domOutput = document.getElementById('dom-output');
+            
+            // Create elements
+            const p = document.createElement('p');
+            p.textContent = 'Dynamically created paragraph!';
+            p.style.color = '#667eea';
+            p.style.fontWeight = 'bold';
+            
+            // Clear and append
+            domOutput.innerHTML = '';
+            domOutput.appendChild(p);
+            
+            log('✓ DOM manipulation successful');
+            log('  - Created element: ' + p.tagName);
+            log('  - Set textContent: ' + p.textContent);
+            log('  - Applied styles');
+            setStatus('dom-status', true);
+        }
+        
+        // Test 3: Event Handling
+        document.getElementById('event-btn').addEventListener('click', function() {
+            clickCount++;
+            document.getElementById('click-counter').textContent = clickCount;
+            log('Button clicked! Count: ' + clickCount);
+            setStatus('event-status', true);
+        });
+        
+        // Test 4: Timers
+        let timerCount = 0;
+        function testTimers() {
+            clearOutput();
+            timerCount = 0;
+            
+            // setTimeout test
+            timerTimeout = setTimeout(function() {
+                log('✓ setTimeout executed after 1 second');
+            }, 1000);
+            
+            // setInterval test
+            timerInterval = setInterval(function() {
+                timerCount++;
+                document.getElementById('timer-output').textContent = 
+                    'Interval tick: ' + timerCount;
+                log('Interval tick #' + timerCount);
+                
+                if (timerCount >= 5) {
+                    stopTimers();
+                    log('✓ Timer tests completed');
+                    setStatus('timer-status', true);
+                }
+            }, 500);
+            
+            log('Timers started...');
+        }
+        
+        function stopTimers() {
+            if (timerTimeout) clearTimeout(timerTimeout);
+            if (timerInterval) clearInterval(timerInterval);
+            log('Timers stopped');
+        }
+        
+        // Test 5: ES6 Features
+        function testES6() {
+            clearOutput();
+            
+            // Arrow functions
+            const add = (a, b) => a + b;
+            log('✓ Arrow function: 5 + 3 = ' + add(5, 3));
+            
+            // Template literals
+            const name = 'PronBrow';
+            log(`✓ Template literal: Hello from ${name}!`);
+            
+            // Destructuring
+            const [a, b, c] = [1, 2, 3];
+            log(`✓ Destructuring: a=${a}, b=${b}, c=${c}`);
+            
+            // Spread operator
+            const arr1 = [1, 2, 3];
+            const arr2 = [...arr1, 4, 5];
+            log('✓ Spread operator: ' + arr2.join(', '));
+            
+            // Map & Set
+            const map = new Map();
+            map.set('key1', 'value1');
+            log('✓ Map: ' + map.get('key1'));
+            
+            const set = new Set([1, 2, 2, 3, 3, 3]);
+            log('✓ Set size (unique): ' + set.size);
+            
+            // Array methods
+            const numbers = [1, 2, 3, 4, 5];
+            const doubled = numbers.map(n => n * 2);
+            const sum = numbers.reduce((acc, n) => acc + n, 0);
+            log('✓ Array.map: ' + doubled.join(', '));
+            log('✓ Array.reduce: sum = ' + sum);
+            
+            setStatus('es6-status', true);
+        }
+        
+        // Test 6: Promises
+        async function testPromises() {
+            clearOutput();
+            
+            // Promise test
+            const promise = new Promise((resolve, reject) => {
+                setTimeout(() => resolve('Promise resolved!'), 1000);
+            });
+            
+            promise.then(result => {
+                log('✓ Promise: ' + result);
+            });
+            
+            // Async/await test
+            const asyncFunction = async () => {
+                log('Async function started...');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                return 'Async/await completed!';
+            };
+            
+            const result = await asyncFunction();
+            log('✓ Async/await: ' + result);
+            
+            setStatus('promise-status', true);
+        }
+        
+        // Test 7: Local Storage
+        function saveToStorage() {
+            const value = document.getElementById('storage-input').value;
+            localStorage.setItem('pronbrow-test', value);
+            log('Saved to localStorage: ' + value);
+            document.getElementById('storage-output').textContent = 
+                'Saved: ' + value;
+            setStatus('storage-status', true);
+        }
+        
+        function loadFromStorage() {
+            const value = localStorage.getItem('pronbrow-test');
+            document.getElementById('storage-output').textContent = 
+                'Loaded: ' + (value || '(empty)');
+            log('Loaded from localStorage: ' + (value || '(empty)'));
+        }
+        
+        function clearStorage() {
+            localStorage.removeItem('pronbrow-test');
+            document.getElementById('storage-output').textContent = 'Cleared';
+            log('Cleared localStorage');
+        }
+        
+        // Test 8: Performance API
+        function testPerformance() {
+            clearOutput();
+            
+            const start = performance.now();
+            
+            // Do some work
+            let sum = 0;
+            for (let i = 0; i < 1000000; i++) {
+                sum += i;
+            }
+            
+            const end = performance.now();
+            const duration = end - start;
+            
+            log('✓ Performance.now() test');
+            log('  - Calculation took: ' + duration.toFixed(2) + 'ms');
+            log('  - Result: ' + sum);
+            
+            setStatus('perf-status', true);
+        }
+        
+        // Page load event
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event fired!');
+            log('=== PronBrow JavaScript Engine Ready ===');
+            log('Page loaded at: ' + new Date().toLocaleTimeString());
+            log('Navigator: ' + navigator.userAgent);
+            log('');
+            log('Click any test button to begin...');
+        });
+        
+        // Log page info
+        console.log('Page URL:', document.URL);
+        console.log('Page title:', document.title);
+    </script>
+</body>
+</html>
