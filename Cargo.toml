@@ -10,6 +10,10 @@ license = "AGPL-3.0-or-later"
 name = "feather"
 path = "src/main.rs"
 
+[lib]
+name = "feather"
+path = "src/lib.rs"
+
 [features]
 default = ["webkit-renderer"]
 webkit-renderer = ["dep:webkit2gtk"]
