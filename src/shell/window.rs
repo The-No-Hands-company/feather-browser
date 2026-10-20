@@ -8,6 +8,7 @@ use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GBox, Orientation, Stack};
 use std::cell::RefCell;
 use std::rc::Rc;
+use glib;
 
 #[cfg(feature = "webkit-renderer")]
 use crate::bridge::WebKitRenderer;
@@ -26,6 +27,19 @@ impl FeatherWindow {
             .build();
 
         let tab_manager: Rc<RefCell<TabManager>> = Rc::new(RefCell::new(TabManager::new()));
+
+        // GTK timer fires every 10s to check idle tabs
+        let mgr_for_timer = Rc::clone(&tab_manager);
+        let hib_mgr = Rc::new(RefCell::new(
+            crate::features::tab_hibernation::HibernationManager::new(settings.auto_hibernate_delay_secs)
+        ));
+        let hib_for_timer = Rc::clone(&hib_mgr);
+        glib::timeout_add_seconds_local(10, move || {
+            let mut tabs = mgr_for_timer.borrow_mut();
+            hib_for_timer.borrow_mut().check_and_hibernate(tabs.tabs_mut());
+            glib::ControlFlow::Continue
+        });
+
         let content_stack = Rc::new(Stack::new());
         content_stack.set_vexpand(true);
         content_stack.set_hexpand(true);

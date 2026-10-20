@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-mod features;
-
 use feather::settings::Settings;
 use feather::shell::window::FeatherWindow;
 use gtk4::prelude::*;

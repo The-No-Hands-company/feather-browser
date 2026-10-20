@@ -88,6 +88,10 @@ impl TabManager {
         &self.tabs
     }
 
+    pub fn tabs_mut(&mut self) -> &mut Vec<Tab> {
+        &mut self.tabs
+    }
+
     pub fn get_tab_mut(&mut self, id: TabId) -> Option<&mut Tab> {
         self.tabs.iter_mut().find(|t| t.id == id)
     }
