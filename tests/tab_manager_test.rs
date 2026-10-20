@@ -2,6 +2,7 @@
 // tests/tab_manager_test.rs — bridge, tab model, and TabManager integration tests
 // This forces the trait + mock to exist and compile
 use feather::bridge::{MockRenderer, PageRenderer};
+use feather::shell::address_bar::AddressBarLogic;
 use feather::shell::tab_manager::{Tab, TabManager, TabState};
 
 fn make_manager() -> TabManager {
@@ -84,4 +85,27 @@ fn test_switch_to_nonexistent_is_noop() {
     let id = mgr.add_tab("https://a.com", make_renderer("https://a.com"));
     mgr.switch_to(99999); // nonexistent
     assert_eq!(mgr.active_tab().unwrap().id, id);
+}
+
+#[test]
+fn test_clean_url_adds_https_scheme() {
+    assert_eq!(AddressBarLogic::clean_url("tnhc.dev"), "https://tnhc.dev");
+}
+
+#[test]
+fn test_clean_url_preserves_existing_scheme() {
+    assert_eq!(AddressBarLogic::clean_url("https://tnhc.dev"), "https://tnhc.dev");
+    assert_eq!(AddressBarLogic::clean_url("http://tnhc.dev"), "http://tnhc.dev");
+}
+
+#[test]
+fn test_clean_url_treats_plain_text_as_search() {
+    let result = AddressBarLogic::clean_url("what is rust");
+    assert!(result.starts_with("https://duckduckgo.com/?q="));
+    assert!(result.contains("what+is+rust") || result.contains("what%20is%20rust"));
+}
+
+#[test]
+fn test_clean_url_trims_whitespace() {
+    assert_eq!(AddressBarLogic::clean_url("  https://tnhc.dev  "), "https://tnhc.dev");
 }
