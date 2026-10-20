@@ -121,10 +121,14 @@ impl PageRenderer for WebKitRenderer {
 
     fn suspend(&self) {
         let mut inner = self.inner.borrow_mut();
-        let url = inner.webview.uri().map(|s| s.to_string());
-        inner.suspended_url = url;
-        inner.webview.stop_loading();
-        inner.webview.load_uri("about:blank");
+        // Guard: only stash the URL on the first suspend call. A second call
+        // would otherwise overwrite suspended_url with the about:blank URI
+        // loaded by the first call, causing resume() to restore the wrong page.
+        if inner.suspended_url.is_none() {
+            inner.suspended_url = inner.webview.uri().map(|s| s.to_string());
+            inner.webview.stop_loading();
+            inner.webview.load_uri("about:blank");
+        }
     }
 
     fn resume(&self) {
