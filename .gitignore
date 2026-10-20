@@ -34,3 +34,6 @@ logs/
 # Environment
 .env
 .env.local
+
+# Legacy pronbrow reference files (local only)
+legacy/
