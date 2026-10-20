@@ -51,7 +51,9 @@ impl Toolbar {
     pub fn connect_navigate<F: Fn(String) + 'static>(&self, f: F) {
         self.url_entry.connect_activate(move |entry| {
             let raw = entry.text().to_string();
-            f(crate::shell::address_bar::AddressBarLogic::clean_url(&raw));
+            let cleaned = crate::shell::address_bar::AddressBarLogic::clean_url(&raw);
+            let private = crate::features::privacy::Privacy::strip_tracking_params(&cleaned);
+            f(private);
         });
     }
 
