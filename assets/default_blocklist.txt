@@ -5,7 +5,7 @@
 0.0.0.0 googlesyndication.com
 0.0.0.0 adnxs.com
 0.0.0.0 ads.twitter.com
-0.0.0.0 facebook.com/tr
+0.0.0.0 connect.facebook.net
 0.0.0.0 analytics.google.com
 0.0.0.0 google-analytics.com
 0.0.0.0 googletagmanager.com

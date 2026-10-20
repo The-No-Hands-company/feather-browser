@@ -37,9 +37,11 @@ impl WebKitRenderer {
             settings.set_allow_modal_dialogs(false);
         }
         // Wire ad blocker into WebKit policy decisions
+        let home = std::env::var("HOME").unwrap_or_default();
+        let config_dir = format!("{}/.config/feather", home);
+        crate::features::ad_blocker::AdBlocker::bundle_default_blocklist(&config_dir);
         let ad_blocker = Rc::new(crate::features::ad_blocker::AdBlocker::load(
-            &format!("{}/.config/feather/blocklist.txt",
-                std::env::var("HOME").unwrap_or_default())
+            &format!("{}/blocklist.txt", config_dir)
         ));
         let blocker_ref = Rc::clone(&ad_blocker);
         webview.connect_decide_policy(move |_view, decision, decision_type| {
