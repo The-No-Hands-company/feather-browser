@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 mod features;
-mod shell;
 
 fn main() {
     env_logger::init();
