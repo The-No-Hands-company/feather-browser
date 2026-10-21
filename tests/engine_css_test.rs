@@ -71,3 +71,47 @@ fn test_style_tree_inherits_display_block_default() {
     // display may be absent (style_tree adds no defaults) — just confirm it runs
     let _ = styled;
 }
+
+#[test]
+fn test_margin_shorthand_1_value() {
+    let sheet = CssParser::parse("p { margin: 10px }");
+    let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+    assert_eq!(decls.get("margin-top"),    Some(&Value::Length(10.0, Unit::Px)));
+    assert_eq!(decls.get("margin-right"),  Some(&Value::Length(10.0, Unit::Px)));
+    assert_eq!(decls.get("margin-bottom"), Some(&Value::Length(10.0, Unit::Px)));
+    assert_eq!(decls.get("margin-left"),   Some(&Value::Length(10.0, Unit::Px)));
+}
+
+#[test]
+fn test_margin_shorthand_2_values() {
+    let sheet = CssParser::parse("p { margin: 10px 20px }");
+    let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+    assert_eq!(decls.get("margin-top"),    Some(&Value::Length(10.0, Unit::Px)));
+    assert_eq!(decls.get("margin-right"),  Some(&Value::Length(20.0, Unit::Px)));
+    assert_eq!(decls.get("margin-bottom"), Some(&Value::Length(10.0, Unit::Px)));
+    assert_eq!(decls.get("margin-left"),   Some(&Value::Length(20.0, Unit::Px)));
+}
+
+#[test]
+fn test_padding_shorthand_4_values() {
+    let sheet = CssParser::parse("div { padding: 1px 2px 3px 4px }");
+    let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+    assert_eq!(decls.get("padding-top"),    Some(&Value::Length(1.0, Unit::Px)));
+    assert_eq!(decls.get("padding-right"),  Some(&Value::Length(2.0, Unit::Px)));
+    assert_eq!(decls.get("padding-bottom"), Some(&Value::Length(3.0, Unit::Px)));
+    assert_eq!(decls.get("padding-left"),   Some(&Value::Length(4.0, Unit::Px)));
+}
+
+#[test]
+fn test_font_shorthand_extracts_size() {
+    let sheet = CssParser::parse("p { font: bold 18px sans-serif }");
+    let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+    assert_eq!(decls.get("font-size"), Some(&Value::Length(18.0, Unit::Px)));
+}
+
+#[test]
+fn test_longhand_still_works() {
+    let sheet = CssParser::parse("p { margin-top: 5px }");
+    let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+    assert_eq!(decls.get("margin-top"), Some(&Value::Length(5.0, Unit::Px)));
+}
