@@ -10,14 +10,14 @@ pub struct StyledNode {
 }
 
 pub fn style_tree(root: &Node, stylesheet: &Stylesheet) -> StyledNode {
-    style_tree_depth(root, stylesheet, 0, &[])
+    style_tree_depth(root, stylesheet, 0, &mut Vec::new())
 }
 
 fn style_tree_depth(
     root: &Node,
     stylesheet: &Stylesheet,
     depth: usize,
-    ancestors: &[ElementData],
+    ancestors: &mut Vec<ElementData>,
 ) -> StyledNode {
     if depth >= 512 {
         return StyledNode { node: root.clone(), properties: PropertyMap::new(), children: Vec::new() };
@@ -26,13 +26,17 @@ fn style_tree_depth(
         NodeType::Element(data) => specified_values(data, stylesheet, ancestors),
         _ => PropertyMap::new(),
     };
-    let children = root.children.iter().map(|c| {
-        let mut child_ancestors = ancestors.to_vec();
-        if let NodeType::Element(data) = &root.node_type {
-            child_ancestors.push(data.clone());
-        }
-        style_tree_depth(c, stylesheet, depth + 1, &child_ancestors)
-    }).collect();
+    let pushed = if let NodeType::Element(data) = &root.node_type {
+        ancestors.push(data.clone());
+        true
+    } else {
+        false
+    };
+    let mut children = Vec::new();
+    for c in &root.children {
+        children.push(style_tree_depth(c, stylesheet, depth + 1, ancestors));
+    }
+    if pushed { ancestors.pop(); }
     StyledNode { node: root.clone(), properties, children }
 }
 
