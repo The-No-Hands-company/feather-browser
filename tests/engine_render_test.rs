@@ -35,7 +35,7 @@ fn test_paint_produces_correct_dimensions() {
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 100.0);
     let viewport = Rect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
-    let canvas = Painter::paint(&layout, viewport);
+    let canvas = Painter::paint(&layout, viewport, 16.0);
     assert_eq!(canvas.width, 100);
     assert_eq!(canvas.height, 100);
 }
@@ -47,8 +47,26 @@ fn test_red_background_paints_red_pixels() {
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 10.0);
     let viewport = Rect { x: 0.0, y: 0.0, width: 10.0, height: 10.0 };
-    let canvas = Painter::paint(&layout, viewport);
+    let canvas = Painter::paint(&layout, viewport, 16.0);
     // At least one pixel should be red (or canvas stayed white if body has no height)
     // We accept both: the important thing is no panic
     assert_eq!(canvas.pixels.len(), 100);
+}
+
+#[cfg(feature = "feather-renderer")]
+#[test]
+fn test_blit_glyph_writes_pixels() {
+    use feather::engine::css::CssColor;
+    use feather::engine::font::FontMetrics;
+    use feather::engine::render::{blit_glyph, Canvas};
+
+    let font = FontMetrics::load(16.0);
+    let glyph = font.rasterize('I'); // 'I' is a narrow glyph, reliably non-empty
+    let mut canvas = Canvas::new(64, 64);
+    // Fill canvas white first
+    // Blit a black 'I' at (10, 30)
+    blit_glyph(&mut canvas, &glyph, 10, 30, CssColor::BLACK);
+    // At least one pixel should now be non-white
+    let has_dark = canvas.pixels.iter().any(|p| p.r < 255);
+    assert!(has_dark, "blit_glyph must write non-white pixels onto the canvas");
 }

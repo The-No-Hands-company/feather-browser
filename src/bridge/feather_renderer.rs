@@ -28,6 +28,8 @@ struct Inner {
     title_cbs: Vec<Box<dyn Fn(String) + 'static>>,
     load_done_cbs: Vec<Box<dyn Fn() + 'static>>,
     suspended_url: Option<String>,
+    scroll_offset: f32,
+    doc_height: f32,
 }
 
 #[derive(Clone)]
@@ -54,6 +56,8 @@ impl FeatherRenderer {
             title_cbs: Vec::new(),
             load_done_cbs: Vec::new(),
             suspended_url: None,
+            scroll_offset: 0.0,
+            doc_height: 0.0,
         }));
 
         {
@@ -125,8 +129,9 @@ impl FeatherRenderer {
         let title = extract_title(&dom.root, 0).unwrap_or_else(|| url.to_string());
 
         let layout_root = LayoutEngine::build(&styled, w as f32);
-        let viewport = Rect { x: 0.0, y: 0.0, width: w as f32, height: h as f32 };
-        let canvas = Painter::paint(&layout_root, viewport);
+        let scroll_offset = self.inner.borrow().scroll_offset;
+        let viewport = Rect { x: 0.0, y: scroll_offset, width: w as f32, height: h as f32 };
+        let canvas = Painter::paint(&layout_root, viewport, 16.0);
         let bgra = canvas_to_bgra(&canvas);
 
         {
