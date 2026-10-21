@@ -215,8 +215,17 @@ impl HtmlParser {
     }
 
     fn starts_with(&self, s: &str) -> bool {
-        let chars: Vec<char> = s.chars().collect();
-        self.input[self.pos..].starts_with(&chars)
+        let mut s_chars = s.chars();
+        let mut i = self.pos;
+        loop {
+            match s_chars.next() {
+                None => return true,
+                Some(c) => {
+                    if i >= self.input.len() || self.input[i] != c { return false; }
+                    i += 1;
+                }
+            }
+        }
     }
 
     fn eof(&self) -> bool {
