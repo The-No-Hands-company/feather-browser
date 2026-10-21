@@ -120,8 +120,12 @@ impl CssParser {
         loop {
             self.skip_whitespace_and_comments();
             if self.eof() { break; }
+            let pos_before = self.pos;
             if let Some(rule) = self.parse_rule() {
                 rules.push(rule);
+            }
+            if self.pos == pos_before && !self.eof() {
+                self.consume();
             }
         }
         rules
@@ -258,8 +262,17 @@ impl CssParser {
     }
 
     fn starts_with(&self, s: &str) -> bool {
-        let chars: Vec<char> = s.chars().collect();
-        self.input[self.pos..].starts_with(&chars)
+        let mut s_chars = s.chars();
+        let mut i = self.pos;
+        loop {
+            match s_chars.next() {
+                None => return true,
+                Some(c) => {
+                    if i >= self.input.len() || self.input[i] != c { return false; }
+                    i += 1;
+                }
+            }
+        }
     }
 
     fn eof(&self) -> bool { self.pos >= self.input.len() }
