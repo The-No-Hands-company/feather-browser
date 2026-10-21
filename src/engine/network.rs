@@ -7,7 +7,7 @@ pub struct FetchResult {
     pub html: String,
     /// The final URL after any redirects.
     pub base_url: String,
-    /// HTTP status code (or 200 for file:// reads).
+    /// HTTP status code (200 for about:blank).
     pub status: u16,
 }
 
