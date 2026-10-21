@@ -13,11 +13,19 @@ pub struct StyledNode {
 /// Build a styled tree by matching every element against the stylesheet.
 /// Text and Comment nodes carry no properties; their children list is empty.
 pub fn style_tree(root: &Node, stylesheet: &Stylesheet) -> StyledNode {
+    style_tree_depth(root, stylesheet, 0)
+}
+
+fn style_tree_depth(root: &Node, stylesheet: &Stylesheet, depth: usize) -> StyledNode {
+    // Depth cap: prevent stack overflow on pathological DOM (Fix 1).
+    if depth >= 512 {
+        return StyledNode { node: root.clone(), properties: PropertyMap::new(), children: Vec::new() };
+    }
     let properties = match &root.node_type {
         NodeType::Element(data) => specified_values(data, stylesheet),
         _ => PropertyMap::new(),
     };
-    let children = root.children.iter().map(|c| style_tree(c, stylesheet)).collect();
+    let children = root.children.iter().map(|c| style_tree_depth(c, stylesheet, depth + 1)).collect();
     StyledNode { node: root.clone(), properties, children }
 }
 

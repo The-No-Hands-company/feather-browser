@@ -57,9 +57,14 @@ impl FeatherRenderer {
         }));
 
         {
-            let inner_draw = Rc::clone(&inner);
+            // Fix 2: use a Weak reference to avoid an Rc cycle in the draw closure.
+            let inner_weak = Rc::downgrade(&inner);
             drawing_area.set_draw_func(move |_da, ctx, w, h| {
-                let state = inner_draw.borrow();
+                let inner_rc = match inner_weak.upgrade() {
+                    Some(rc) => rc,
+                    None => return,
+                };
+                let state = inner_rc.borrow();
                 match &state.pixel_buf {
                     None => {
                         ctx.set_source_rgb(0.15, 0.15, 0.15);
@@ -112,10 +117,12 @@ impl FeatherRenderer {
         };
 
         let dom = HtmlParser::parse(html);
-        let css_text = extract_style_tags(&dom.root);
+        // Fix 7: prepend UA stylesheet so head/style/script/title default to display:none.
+        let ua_css = "head{display:none}style{display:none}script{display:none}title{display:none}";
+        let css_text = format!("{} {}", ua_css, extract_style_tags(&dom.root, 0));
         let sheet = CssParser::parse(&css_text);
         let styled = style_tree(&dom.root, &sheet);
-        let title = extract_title(&dom.root).unwrap_or_else(|| url.to_string());
+        let title = extract_title(&dom.root, 0).unwrap_or_else(|| url.to_string());
 
         let layout_root = LayoutEngine::build(&styled, w as f32);
         let viewport = Rect { x: 0.0, y: 0.0, width: w as f32, height: h as f32 };
@@ -166,9 +173,10 @@ impl FeatherRenderer {
                     glib::ControlFlow::Break
                 }
                 Ok(Err(e)) => {
+                    // Fix 4: escape error message to prevent HTML injection.
                     let error_html = format!(
                         "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
-                        e
+                        html_escape(&e)
                     );
                     renderer.render_page(&error_html, &url);
                     glib::ControlFlow::Break
@@ -189,7 +197,8 @@ impl PageRenderer for FeatherRenderer {
         let url = url.to_string();
         {
             let mut s = self.inner.borrow_mut();
-            if s.history.last().map(|u| u.as_str()) != Some(&url) {
+            // Fix 3: compare against history[history_pos], not history.last().
+            if s.history.get(s.history_pos).map(|u| u.as_str()) != Some(&url) {
                 let pos = s.history_pos + 1;
                 s.history.truncate(pos);
                 s.history.push(url.clone());
@@ -216,9 +225,10 @@ impl PageRenderer for FeatherRenderer {
                     glib::ControlFlow::Break
                 }
                 Ok(Err(e)) => {
+                    // Fix 4: escape error message to prevent HTML injection.
                     let error_html = format!(
                         "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
-                        e
+                        html_escape(&e)
                     );
                     renderer.render_page(&error_html, &url);
                     glib::ControlFlow::Break
@@ -285,9 +295,14 @@ impl PageRenderer for FeatherRenderer {
         log::debug!("[FeatherRenderer] suspended: {}", url);
     }
 
+    // Fix 3: resume() uses fetch_and_render_url to avoid corrupting history.
     fn resume(&self) {
         let url = self.inner.borrow_mut().suspended_url.take();
-        if let Some(u) = url { self.load_url(&u); }
+        if let Some(u) = url {
+            if !u.is_empty() {
+                self.fetch_and_render_url(u);
+            }
+        }
     }
 
     fn run_script(&self, _js: &str) {}
@@ -305,7 +320,17 @@ impl PageRenderer for FeatherRenderer {
     }
 }
 
-fn extract_style_tags(node: &crate::engine::dom::Node) -> String {
+/// Fix 4: Escape HTML special characters to prevent injection in error pages.
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+     .replace('<', "&lt;")
+     .replace('>', "&gt;")
+     .replace('"', "&quot;")
+}
+
+/// Fix 1: depth-capped traversal to avoid stack overflow on deep DOMs.
+fn extract_style_tags(node: &crate::engine::dom::Node, depth: usize) -> String {
+    if depth >= 512 { return String::new(); }
     let mut css = String::new();
     if let NodeType::Element(e) = &node.node_type {
         if e.tag_name == "style" {
@@ -317,12 +342,14 @@ fn extract_style_tags(node: &crate::engine::dom::Node) -> String {
         }
     }
     for child in &node.children {
-        css.push_str(&extract_style_tags(child));
+        css.push_str(&extract_style_tags(child, depth + 1));
     }
     css
 }
 
-fn extract_title(node: &crate::engine::dom::Node) -> Option<String> {
+/// Fix 1: depth-capped traversal to avoid stack overflow on deep DOMs.
+fn extract_title(node: &crate::engine::dom::Node, depth: usize) -> Option<String> {
+    if depth >= 512 { return None; }
     if let NodeType::Element(e) = &node.node_type {
         if e.tag_name == "title" {
             let text: String = node.children.iter().filter_map(|c| {
@@ -332,7 +359,7 @@ fn extract_title(node: &crate::engine::dom::Node) -> Option<String> {
         }
     }
     for child in &node.children {
-        if let Some(t) = extract_title(child) { return Some(t); }
+        if let Some(t) = extract_title(child, depth + 1) { return Some(t); }
     }
     None
 }

@@ -71,17 +71,19 @@ impl Painter {
         let width = viewport.width.ceil() as usize;
         let height = viewport.height.ceil() as usize;
         let mut canvas = Canvas::new(width.max(1), height.max(1));
-        render_box(&mut canvas, layout_root);
+        render_box(&mut canvas, layout_root, 0);
         canvas
     }
 }
 
-fn render_box(canvas: &mut Canvas, lb: &LayoutBox) {
+fn render_box(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
+    // Depth cap: prevent stack overflow on pathological layout tree (Fix 1).
+    if depth >= 512 { return; }
     render_background(canvas, lb);
     render_borders(canvas, lb);
     render_text(canvas, lb);
     for child in &lb.children {
-        render_box(canvas, child);
+        render_box(canvas, child, depth + 1);
     }
 }
 

@@ -121,7 +121,10 @@ impl FeatherWindow {
                     #[cfg(feature = "webkit-renderer")]
                     let renderer: Box<dyn PageRenderer> =
                         Box::new(WebKitRenderer::new(Rc::clone(&_adblock_for_new)));
-                    #[cfg(not(feature = "webkit-renderer"))]
+                    #[cfg(all(feature = "feather-renderer", not(feature = "webkit-renderer")))]
+                    let renderer: Box<dyn PageRenderer> =
+                        Box::new(crate::bridge::FeatherRenderer::new());
+                    #[cfg(not(any(feature = "webkit-renderer", feature = "feather-renderer")))]
                     let renderer: Box<dyn PageRenderer> =
                         Box::new(crate::bridge::MockRenderer::new(&homepage_c));
                     renderer.load_url(&homepage_c);
@@ -165,7 +168,10 @@ impl FeatherWindow {
             #[cfg(feature = "webkit-renderer")]
             let renderer: Box<dyn PageRenderer> =
                 Box::new(WebKitRenderer::new(Rc::clone(&adblock_flag)));
-            #[cfg(not(feature = "webkit-renderer"))]
+            #[cfg(all(feature = "feather-renderer", not(feature = "webkit-renderer")))]
+            let renderer: Box<dyn PageRenderer> =
+                Box::new(crate::bridge::FeatherRenderer::new());
+            #[cfg(not(any(feature = "webkit-renderer", feature = "feather-renderer")))]
             let renderer: Box<dyn PageRenderer> =
                 Box::new(crate::bridge::MockRenderer::new(&settings.homepage));
             renderer.load_url(&settings.homepage);

@@ -93,12 +93,21 @@ impl LayoutEngine {
         let mut containing = Dimensions::default();
         containing.content.width = viewport_width;
         let mut tree = build_layout_tree(root);
-        layout_box(&mut tree, &containing);
+        layout_box(&mut tree, &containing, 0);
         tree
     }
 }
 
 fn build_layout_tree(styled: &StyledNode) -> LayoutBox {
+    build_layout_tree_depth(styled, 0)
+}
+
+fn build_layout_tree_depth(styled: &StyledNode, depth: usize) -> LayoutBox {
+    // Depth cap: prevent stack overflow on pathological DOM (Fix 1).
+    if depth >= 512 {
+        return LayoutBox::new(BoxType::Anonymous);
+    }
+
     let display = get_display(styled);
     let box_type = match display.as_deref() {
         Some("none") => {
@@ -123,7 +132,7 @@ fn build_layout_tree(styled: &StyledNode) -> LayoutBox {
             NodeType::Element(_) => {
                 let child_display = get_display(child);
                 if child_display.as_deref() != Some("none") {
-                    lb.children.push(build_layout_tree(child));
+                    lb.children.push(build_layout_tree_depth(child, depth + 1));
                 }
             }
             NodeType::Comment(_) => {}
@@ -139,9 +148,11 @@ fn get_display(styled: &StyledNode) -> Option<String> {
     })
 }
 
-fn layout_box(lb: &mut LayoutBox, containing: &Dimensions) {
+fn layout_box(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
+    // Depth cap: prevent stack overflow (Fix 1).
+    if depth >= 512 { return; }
     match lb.box_type.clone() {
-        BoxType::Block(_) => layout_block(lb, containing),
+        BoxType::Block(_) => layout_block(lb, containing, depth),
         BoxType::Inline(_) => layout_inline(lb, containing),
         BoxType::Anonymous => {
             lb.dimensions.content.x = containing.content.x;
@@ -150,10 +161,10 @@ fn layout_box(lb: &mut LayoutBox, containing: &Dimensions) {
     }
 }
 
-fn layout_block(lb: &mut LayoutBox, containing: &Dimensions) {
+fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
     calculate_block_width(lb, containing);
     calculate_block_position(lb, containing);
-    layout_block_children(lb);
+    layout_block_children(lb, depth);
     calculate_block_height(lb);
 }
 
@@ -219,10 +230,10 @@ fn calculate_block_position(lb: &mut LayoutBox, containing: &Dimensions) {
         + lb.dimensions.padding.top;
 }
 
-fn layout_block_children(lb: &mut LayoutBox) {
+fn layout_block_children(lb: &mut LayoutBox, depth: usize) {
     let dims = lb.dimensions;
     for child in &mut lb.children {
-        layout_box(child, &dims);
+        layout_box(child, &dims, depth + 1);
         lb.dimensions.content.height += child.dimensions.margin_box().height;
     }
 }

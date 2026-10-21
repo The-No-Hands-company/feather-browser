@@ -35,10 +35,12 @@ pub fn fetch_page(url: &str) -> Result<FetchResult, FetchError> {
         });
     }
 
+    // Fix 5: disable Referer header to prevent privacy leaks.
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .user_agent("Feather/0.3 (https://tnhc.dev/feather)")
         .redirect(reqwest::redirect::Policy::limited(10))
+        .referer(false)
         .build()
         .map_err(|e| FetchError(format!("client build failed: {e}")))?;
 
@@ -49,9 +51,18 @@ pub fn fetch_page(url: &str) -> Result<FetchResult, FetchError> {
 
     let base_url = response.url().to_string();
     let status = response.status().as_u16();
-    let html = response
-        .text()
-        .map_err(|e| FetchError(format!("body decode failed: {e}")))?;
+
+    // Fix 6: cap response body at 10 MB to prevent unbounded memory use.
+    const MAX_BODY_BYTES: usize = 10 * 1024 * 1024;
+    let bytes = response
+        .bytes()
+        .map_err(|e| FetchError(format!("body read failed: {e}")))?;
+    let truncated = if bytes.len() > MAX_BODY_BYTES {
+        &bytes[..MAX_BODY_BYTES]
+    } else {
+        &bytes[..]
+    };
+    let html = String::from_utf8_lossy(truncated).into_owned();
 
     Ok(FetchResult { html, base_url, status })
 }

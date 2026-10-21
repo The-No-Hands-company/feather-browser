@@ -17,7 +17,7 @@ impl HtmlParser {
     /// Parse an HTML string and return a [`Dom`] rooted at an implicit `<html>` element.
     pub fn parse(html: &str) -> Dom {
         let mut p = HtmlParser { pos: 0, input: html.chars().collect() };
-        let nodes = p.parse_nodes();
+        let nodes = p.parse_nodes(0, false);
         let root = p.ensure_html_root(nodes);
         Dom::new(root)
     }
@@ -59,21 +59,32 @@ impl HtmlParser {
     // Node list parsing
     // -------------------------------------------------------------------------
 
-    fn parse_nodes(&mut self) -> Vec<Node> {
+    /// `in_element`: true when parsing children of an open tag; false at document top-level.
+    /// Depth cap prevents stack overflows on pathological input (Fix 1).
+    /// Stale closing tags at the top level are skipped rather than terminating parsing (Fix 8).
+    fn parse_nodes(&mut self, depth: usize, in_element: bool) -> Vec<Node> {
         let mut nodes = Vec::new();
         loop {
             self.skip_whitespace();
-            if self.eof() || self.starts_with("</") {
-                break;
+            if self.eof() { break; }
+            if self.starts_with("</") {
+                if in_element {
+                    break; // Normal end-of-children for the enclosing element.
+                } else {
+                    // Top-level stale closing tag: consume and continue.
+                    self.skip_to('>');
+                    if !self.eof() { self.consume(); }
+                    continue;
+                }
             }
-            if let Some(node) = self.parse_node() {
+            if let Some(node) = self.parse_node(depth) {
                 nodes.push(node);
             }
         }
         nodes
     }
 
-    fn parse_node(&mut self) -> Option<Node> {
+    fn parse_node(&mut self, depth: usize) -> Option<Node> {
         if self.starts_with("<!--") {
             return Some(self.parse_comment());
         }
@@ -86,7 +97,7 @@ impl HtmlParser {
             return None;
         }
         if self.current_is('<') {
-            return Some(self.parse_element());
+            return Some(self.parse_element(depth));
         }
         Some(self.parse_text())
     }
@@ -95,7 +106,14 @@ impl HtmlParser {
     // Element parsing
     // -------------------------------------------------------------------------
 
-    fn parse_element(&mut self) -> Node {
+    fn parse_element(&mut self, depth: usize) -> Node {
+        // Depth cap: avoid stack overflow on pathological input (Fix 1).
+        if depth >= 512 {
+            self.skip_to('>');
+            if !self.eof() { self.consume(); }
+            return Node::text(String::new());
+        }
+
         self.consume(); // '<'
         let tag = self.parse_tag_name().to_lowercase();
         let attrs = self.parse_attributes();
@@ -114,7 +132,7 @@ impl HtmlParser {
             return Node::element(tag, attrs);
         }
 
-        let children = self.parse_nodes();
+        let children = self.parse_nodes(depth + 1, true);
 
         // Consume closing tag if present
         if self.starts_with("</") {
