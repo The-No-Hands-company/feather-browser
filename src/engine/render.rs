@@ -76,19 +76,20 @@ impl Painter {
         #[cfg(feature = "feather-renderer")]
         {
             let font = crate::engine::font::FontMetrics::load(font_size);
-            render_box(&mut canvas, layout_root, &font, viewport.y);
+            render_box(&mut canvas, layout_root, &font, viewport.y, 0);
         }
         #[cfg(not(feature = "feather-renderer"))]
         {
             let _ = font_size;
-            render_box_plain(&mut canvas, layout_root);
+            render_box_plain(&mut canvas, layout_root, 0);
         }
         canvas
     }
 }
 
 #[cfg(feature = "feather-renderer")]
-fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y: f32) {
+fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y: f32, depth: usize) {
+    if depth >= 512 { return; }
     render_background_scrolled(canvas, lb, scroll_y);
     render_borders_scrolled(canvas, lb, scroll_y);
     if !lb.line_boxes.is_empty() {
@@ -96,7 +97,6 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
         let origin_y = lb.dimensions.content.y - scroll_y;
         for line in &lb.line_boxes {
             let baseline_y = (origin_y + line.y + line.baseline) as i32;
-            // Skip lines entirely outside canvas
             if baseline_y < -(font.ascent as i32) || baseline_y > canvas.height as i32 {
                 continue;
             }
@@ -113,17 +113,18 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
         render_text_scrolled(canvas, lb, scroll_y);
     }
     for child in &lb.children {
-        render_box(canvas, child, font, scroll_y);
+        render_box(canvas, child, font, scroll_y, depth + 1);
     }
 }
 
 #[cfg(not(feature = "feather-renderer"))]
-fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox) {
+fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
+    if depth >= 512 { return; }
     render_background(canvas, lb);
     render_borders(canvas, lb);
     render_text(canvas, lb);
     for child in &lb.children {
-        render_box_plain(canvas, child);
+        render_box_plain(canvas, child, depth + 1);
     }
 }
 
