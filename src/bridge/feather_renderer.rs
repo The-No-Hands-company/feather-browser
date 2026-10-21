@@ -108,6 +108,24 @@ impl FeatherRenderer {
             });
         }
 
+        {
+            let scroll_ctrl = gtk4::EventControllerScroll::new(
+                gtk4::EventControllerScrollFlags::VERTICAL,
+            );
+            let inner_scroll = Rc::downgrade(&inner);
+            scroll_ctrl.connect_scroll(move |_, _dx, dy| {
+                if let Some(rc) = inner_scroll.upgrade() {
+                    let mut s = rc.borrow_mut();
+                    let viewport_h = s.drawing_area.height() as f32;
+                    let max_scroll = (s.doc_height - viewport_h).max(0.0);
+                    s.scroll_offset = (s.scroll_offset + dy as f32 * 40.0).clamp(0.0, max_scroll);
+                    s.drawing_area.queue_draw();
+                }
+                glib::Propagation::Stop
+            });
+            drawing_area.add_controller(scroll_ctrl);
+        }
+
         Self { inner }
     }
 
@@ -129,6 +147,11 @@ impl FeatherRenderer {
         let title = extract_title(&dom.root, 0).unwrap_or_else(|| url.to_string());
 
         let layout_root = LayoutEngine::build(&styled, w as f32);
+        {
+            let mut s = self.inner.borrow_mut();
+            s.doc_height = layout_root.dimensions.margin_box().height;
+            s.scroll_offset = 0.0;
+        }
         let scroll_offset = self.inner.borrow().scroll_offset;
         let viewport = Rect { x: 0.0, y: scroll_offset, width: w as f32, height: h as f32 };
         let canvas = Painter::paint(&layout_root, viewport, 16.0);
@@ -164,30 +187,37 @@ impl FeatherRenderer {
         self.inner.borrow_mut().url = url.clone();
         let renderer = self.clone();
         let url_clone = url.clone();
-        let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
-        std::thread::spawn(move || {
-            let result = network::fetch_page(&url_clone)
-                .map(|r| r.html)
-                .map_err(|e| e.0);
-            let _ = tx.send(result);
-        });
-        glib::idle_add_local(move || {
-            match rx.try_recv() {
-                Ok(Ok(html)) => {
-                    renderer.render_page(&html, &url);
-                    glib::ControlFlow::Break
+        glib::MainContext::default().spawn_local(async move {
+            let pool = match glib::ThreadPool::shared(None) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("[FeatherRenderer] ThreadPool::shared failed: {}", e);
+                    return;
                 }
+            };
+            let future = match pool.push_future(move || network::fetch_page(&url_clone)) {
+                Ok(f) => f,
+                Err(e) => {
+                    log::error!("[FeatherRenderer] push_future failed: {}", e);
+                    return;
+                }
+            };
+            drop(pool);
+            match future.await {
+                Ok(Ok(r)) => renderer.render_page(&r.html, &url),
                 Ok(Err(e)) => {
-                    // Fix 4: escape error message to prevent HTML injection.
                     let error_html = format!(
                         "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
-                        html_escape(&e)
+                        html_escape(&e.0)
                     );
                     renderer.render_page(&error_html, &url);
-                    glib::ControlFlow::Break
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
-                Err(_) => glib::ControlFlow::Break,
+                Err(_) => {
+                    renderer.render_page(
+                        "<html><body><h2>Load failed</h2><p>Network thread panicked</p></body></html>",
+                        &url,
+                    );
+                }
             }
         });
     }
@@ -215,31 +245,37 @@ impl PageRenderer for FeatherRenderer {
         let renderer = self.clone();
         let url_clone = url.clone();
 
-        let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
-        std::thread::spawn(move || {
-            let result = network::fetch_page(&url_clone)
-                .map(|r| r.html)
-                .map_err(|e| e.0);
-            let _ = tx.send(result);
-        });
-
-        glib::idle_add_local(move || {
-            match rx.try_recv() {
-                Ok(Ok(html)) => {
-                    renderer.render_page(&html, &url);
-                    glib::ControlFlow::Break
+        glib::MainContext::default().spawn_local(async move {
+            let pool = match glib::ThreadPool::shared(None) {
+                Ok(p) => p,
+                Err(e) => {
+                    log::error!("[FeatherRenderer] ThreadPool::shared failed: {}", e);
+                    return;
                 }
+            };
+            let future = match pool.push_future(move || network::fetch_page(&url_clone)) {
+                Ok(f) => f,
+                Err(e) => {
+                    log::error!("[FeatherRenderer] push_future failed: {}", e);
+                    return;
+                }
+            };
+            drop(pool);
+            match future.await {
+                Ok(Ok(r)) => renderer.render_page(&r.html, &url),
                 Ok(Err(e)) => {
-                    // Fix 4: escape error message to prevent HTML injection.
                     let error_html = format!(
                         "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
-                        html_escape(&e)
+                        html_escape(&e.0)
                     );
                     renderer.render_page(&error_html, &url);
-                    glib::ControlFlow::Break
                 }
-                Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
-                Err(_) => glib::ControlFlow::Break,
+                Err(_) => {
+                    renderer.render_page(
+                        "<html><body><h2>Load failed</h2><p>Network thread panicked</p></body></html>",
+                        &url,
+                    );
+                }
             }
         });
     }
