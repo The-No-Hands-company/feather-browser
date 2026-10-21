@@ -106,9 +106,9 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
                 let item_font = crate::engine::font::FontMetrics::load_cached(item.font_size);
                 let mut pen_x = (origin_x + item.x) as i32;
                 for ch in item.text.chars() {
-                    let glyph = item_font.rasterize(ch);
+                    let glyph = item_font.rasterize_cached(ch);
                     blit_glyph(canvas, &glyph, pen_x, baseline_y, item.color);
-                    pen_x = pen_x.saturating_add(item_font.advance_width(ch) as i32);
+                    pen_x = pen_x.saturating_add(glyph.advance_width as i32);
                 }
             }
         }

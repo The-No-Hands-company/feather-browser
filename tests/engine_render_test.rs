@@ -128,3 +128,35 @@ fn test_zero_font_size_falls_back_to_default() {
     let m = FontMetrics::load(0.0);
     assert_eq!(m.size, 16.0);
 }
+
+#[test]
+fn test_render_loop_pen_advances_with_cached_glyphs() {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    use feather::engine::css::CssColor;
+
+    let dom = HtmlParser::parse("<p>Hello</p>");
+    let sheet = CssParser::parse("p { font-size: 16px; color: black; display: block; }");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build(&styled, 400.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 400.0, height: 100.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+
+    // Count columns (x positions) that contain at least one non-white pixel
+    let non_white_cols = (0..canvas.width)
+        .filter(|&x| (0..canvas.height).any(|y| canvas.pixels[y * canvas.width + x] != CssColor::WHITE))
+        .count();
+
+    // "Hello" is 5 chars; if pen advance works (advance_width > 0 per char),
+    // rendered glyphs should span at least 10 distinct columns
+    assert!(
+        non_white_cols >= 10,
+        "Text 'Hello' should span ≥10 non-white columns; got {non_white_cols} \
+         (advance_width may be 0, stacking all chars at x=0)"
+    );
+}
