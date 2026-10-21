@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pub mod css;
 pub mod dom;
+pub mod font;
 pub mod html;
 pub mod layout;
+#[cfg(feature = "feather-renderer")]
 pub mod network;
 pub mod render;
 pub mod style;

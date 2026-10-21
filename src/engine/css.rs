@@ -11,6 +11,12 @@ pub enum Unit {
     Percent,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Combinator {
+    Descendant,
+    Child,
+}
+
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub struct CssColor {
     pub r: u8,
@@ -74,15 +80,19 @@ pub struct Selector {
     pub tag_name: Option<String>,
     pub id: Option<String>,
     pub classes: Vec<String>,
+    pub ancestor: Option<(Combinator, Box<Selector>)>,
 }
 
 impl Selector {
     /// Returns (id_count, class_count, tag_count) — higher is more specific.
     pub fn specificity(&self) -> (usize, usize, usize) {
+        let (ai, ac, at) = self.ancestor.as_ref()
+            .map(|(_, a)| a.specificity())
+            .unwrap_or((0, 0, 0));
         (
-            self.id.is_some() as usize,
-            self.classes.len(),
-            self.tag_name.is_some() as usize,
+            ai + self.id.is_some() as usize,
+            ac + self.classes.len(),
+            at + self.tag_name.is_some() as usize,
         )
     }
 }
@@ -147,7 +157,7 @@ impl CssParser {
         loop {
             self.skip_whitespace_and_comments();
             if self.eof() || self.current() == '{' { break; }
-            selectors.push(self.parse_simple_selector());
+            selectors.push(self.parse_compound_selector());
             self.skip_whitespace_and_comments();
             if self.eof() || self.current() != ',' { break; }
             self.consume(); // ','
@@ -155,8 +165,43 @@ impl CssParser {
         selectors
     }
 
+    fn parse_compound_selector(&mut self) -> Selector {
+        let mut left = self.parse_simple_selector();
+        let mut depth: usize = 0;
+        loop {
+            if depth >= 32 { break; }
+            // Detect combinator: whitespace before a non-special char, or explicit '>'
+            let had_whitespace = !self.eof() && self.input[self.pos].is_whitespace();
+            self.skip_whitespace_and_comments();
+            if self.eof() || self.current() == '{' || self.current() == ',' {
+                break;
+            }
+            let combinator = if self.current() == '>' {
+                self.consume(); // '>'
+                self.skip_whitespace_and_comments();
+                Combinator::Child
+            } else if had_whitespace
+                && (self.current().is_alphanumeric()
+                    || matches!(self.current(), '#' | '.' | '*'))
+            {
+                Combinator::Descendant
+            } else {
+                break;
+            };
+            let right = self.parse_simple_selector();
+            left = Selector {
+                tag_name: right.tag_name,
+                id: right.id,
+                classes: right.classes,
+                ancestor: Some((combinator, Box::new(left))),
+            };
+            depth += 1;
+        }
+        left
+    }
+
     fn parse_simple_selector(&mut self) -> Selector {
-        let mut sel = Selector { tag_name: None, id: None, classes: Vec::new() };
+        let mut sel = Selector { tag_name: None, id: None, classes: Vec::new(), ancestor: None };
         while !self.eof() {
             let c = self.current();
             if c == '#' {
@@ -181,27 +226,24 @@ impl CssParser {
         loop {
             self.skip_whitespace_and_comments();
             if self.eof() || self.current() == '}' { break; }
-            if let Some(d) = self.parse_declaration() {
-                decls.push(d);
-            }
+            decls.extend(self.parse_declaration());
         }
         decls
     }
 
-    fn parse_declaration(&mut self) -> Option<Declaration> {
+    fn parse_declaration(&mut self) -> Vec<Declaration> {
         let name = self.parse_identifier();
-        if name.is_empty() { self.skip_to(';'); self.consume_if(';'); return None; }
+        if name.is_empty() { self.skip_to(';'); self.consume_if(';'); return vec![]; }
         self.skip_whitespace_and_comments();
-        if self.eof() || self.current() != ':' { self.skip_to(';'); self.consume_if(';'); return None; }
+        if self.eof() || self.current() != ':' { self.skip_to(';'); self.consume_if(';'); return vec![]; }
         self.consume(); // ':'
         self.skip_whitespace_and_comments();
         let raw = self.consume_while(|c| c != ';' && c != '}').trim().to_string();
         self.consume_if(';');
-        let value = Self::parse_value(&raw);
-        Some((name, value))
+        expand_shorthand(&name, &raw)
     }
 
-    fn parse_value(raw: &str) -> Value {
+    pub fn parse_value(raw: &str) -> Value {
         let s = raw.trim();
         // rem must be checked before em (longer suffix first)
         if let Some(rest) = s.strip_suffix("rem") {
@@ -283,4 +325,62 @@ impl CssParser {
         while !self.eof() && test(self.current()) { s.push(self.consume()); }
         s
     }
+}
+
+fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
+    match prop {
+        "margin" | "padding" => {
+            let values: Vec<Value> = raw.split_whitespace()
+                .map(CssParser::parse_value)
+                .collect();
+            expand_box_model(prop, &values)
+        }
+        "border-width" => {
+            let values: Vec<Value> = raw.split_whitespace()
+                .map(CssParser::parse_value)
+                .collect();
+            expand_box_model("border", &values)
+        }
+        "font" => expand_font_shorthand(raw),
+        _ => vec![(prop.to_string(), CssParser::parse_value(raw))],
+    }
+}
+
+fn expand_box_model(prefix: &str, values: &[Value]) -> Vec<(String, Value)> {
+    if values.is_empty() { return vec![]; }
+    let (top, right, bottom, left) = match values.len() {
+        1 => (values[0].clone(), values[0].clone(), values[0].clone(), values[0].clone()),
+        2 => (values[0].clone(), values[1].clone(), values[0].clone(), values[1].clone()),
+        3 => (values[0].clone(), values[1].clone(), values[2].clone(), values[1].clone()),
+        _ => (values[0].clone(), values[1].clone(), values[2].clone(), values[3].clone()),
+    };
+    let suffix = if prefix == "border" { "-width" } else { "" };
+    vec![
+        (format!("{}-top{}", prefix, suffix),    top),
+        (format!("{}-right{}", prefix, suffix),  right),
+        (format!("{}-bottom{}", prefix, suffix), bottom),
+        (format!("{}-left{}", prefix, suffix),   left),
+    ]
+}
+
+fn expand_font_shorthand(raw: &str) -> Vec<(String, Value)> {
+    let mut decls = Vec::new();
+    let parts: Vec<&str> = raw.split_whitespace().collect();
+    for part in &parts {
+        if part.ends_with("px") || part.ends_with("em") || part.ends_with("rem") {
+            let v = CssParser::parse_value(part);
+            if matches!(v, Value::Length(_, _)) {
+                decls.push(("font-size".to_string(), v));
+                break;
+            }
+        }
+    }
+    for part in &parts {
+        match *part {
+            "bold" => { decls.push(("font-weight".to_string(), Value::Keyword("bold".to_string()))); break; }
+            "normal" => { decls.push(("font-weight".to_string(), Value::Keyword("normal".to_string()))); break; }
+            _ => {}
+        }
+    }
+    decls
 }

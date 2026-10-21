@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::engine::css::{CssColor, Value};
 use crate::engine::layout::{BoxType, LayoutBox, Rect};
+#[cfg(feature = "feather-renderer")]
+use crate::engine::font::{FontMetrics, GlyphBitmap};
 
 /// A software-rendered pixel buffer. Each pixel is RGBA (not pre-multiplied).
 #[derive(Debug, Clone)]
@@ -67,23 +69,62 @@ pub fn canvas_to_bgra(canvas: &Canvas) -> Vec<u8> {
 pub struct Painter;
 
 impl Painter {
-    pub fn paint(layout_root: &LayoutBox, viewport: Rect) -> Canvas {
+    pub fn paint(layout_root: &LayoutBox, viewport: Rect, font_size: f32) -> Canvas {
         let width = viewport.width.ceil() as usize;
         let height = viewport.height.ceil() as usize;
         let mut canvas = Canvas::new(width.max(1), height.max(1));
-        render_box(&mut canvas, layout_root, 0);
+        #[cfg(feature = "feather-renderer")]
+        {
+            let font = crate::engine::font::FontMetrics::load(font_size);
+            render_box(&mut canvas, layout_root, &font, viewport.y, 0);
+        }
+        #[cfg(not(feature = "feather-renderer"))]
+        {
+            let _ = font_size;
+            render_box_plain(&mut canvas, layout_root, 0);
+        }
         canvas
     }
 }
 
-fn render_box(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
-    // Depth cap: prevent stack overflow on pathological layout tree (Fix 1).
+#[cfg(feature = "feather-renderer")]
+fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y: f32, depth: usize) {
+    if depth >= 512 { return; }
+    render_background_scrolled(canvas, lb, scroll_y);
+    render_borders_scrolled(canvas, lb, scroll_y);
+    if !lb.line_boxes.is_empty() {
+        let origin_x = lb.dimensions.content.x;
+        let origin_y = lb.dimensions.content.y - scroll_y;
+        for line in &lb.line_boxes {
+            let baseline_y = (origin_y + line.y + line.baseline) as i32;
+            if baseline_y < -(font.ascent as i32) || baseline_y > canvas.height as i32 {
+                continue;
+            }
+            for item in &line.items {
+                let mut pen_x = (origin_x + item.x) as i32;
+                for ch in item.text.chars() {
+                    let glyph = font.rasterize(ch);
+                    blit_glyph(canvas, &glyph, pen_x, baseline_y, item.color);
+                    pen_x += font.advance_width(ch) as i32;
+                }
+            }
+        }
+    } else {
+        render_text_scrolled(canvas, lb, scroll_y);
+    }
+    for child in &lb.children {
+        render_box(canvas, child, font, scroll_y, depth + 1);
+    }
+}
+
+#[cfg(not(feature = "feather-renderer"))]
+fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
     if depth >= 512 { return; }
     render_background(canvas, lb);
     render_borders(canvas, lb);
     render_text(canvas, lb);
     for child in &lb.children {
-        render_box(canvas, child, depth + 1);
+        render_box_plain(canvas, child, depth + 1);
     }
 }
 
@@ -115,6 +156,67 @@ fn render_text(canvas: &mut Canvas, lb: &LayoutBox) {
     let rect = Rect {
         x: lb.dimensions.content.x,
         y: lb.dimensions.content.y,
+        width: (text.len() as f32 * 7.0).min(lb.dimensions.content.width),
+        height: 14.0,
+    };
+    canvas.fill_rect(rect, font_color);
+}
+
+#[cfg(feature = "feather-renderer")]
+pub fn blit_glyph(canvas: &mut Canvas, glyph: &GlyphBitmap, x: i32, baseline_y: i32, color: CssColor) {
+    for gy in 0..glyph.height {
+        for gx in 0..glyph.width {
+            let alpha = glyph.pixels[gy * glyph.width + gx];
+            if alpha == 0 { continue; }
+            let cx = x + glyph.bearing_x + gx as i32;
+            let cy = baseline_y - glyph.bearing_y + gy as i32;
+            if cx < 0 || cy < 0 { continue; }
+            let alpha_f = alpha as f32 / 255.0;
+            let blended = CssColor {
+                r: (color.r as f32 * alpha_f + 255.0 * (1.0 - alpha_f)) as u8,
+                g: (color.g as f32 * alpha_f + 255.0 * (1.0 - alpha_f)) as u8,
+                b: (color.b as f32 * alpha_f + 255.0 * (1.0 - alpha_f)) as u8,
+                a: 255,
+            };
+            canvas.set_pixel(cx as usize, cy as usize, blended);
+        }
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
+    let color = get_color(lb, "background-color").unwrap_or(CssColor::TRANSPARENT);
+    if color.a == 0 { return; }
+    let mut rect = lb.dimensions.border_box();
+    rect.y -= scroll_y;
+    canvas.fill_rect(rect, color);
+}
+
+#[cfg(feature = "feather-renderer")]
+fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
+    let color = match get_color(lb, "border-color") {
+        Some(c) => c,
+        None => return,
+    };
+    let d = &lb.dimensions;
+    let mut bb = d.border_box();
+    bb.y -= scroll_y;
+    canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: bb.width, height: d.border.top }, color);
+    canvas.fill_rect(Rect { x: bb.x, y: bb.y + bb.height - d.border.bottom, width: bb.width, height: d.border.bottom }, color);
+    canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: d.border.left, height: bb.height }, color);
+    canvas.fill_rect(Rect { x: bb.x + bb.width - d.border.right, y: bb.y, width: d.border.right, height: bb.height }, color);
+}
+
+#[cfg(feature = "feather-renderer")]
+fn render_text_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
+    let text = match &lb.text {
+        Some(t) if !t.is_empty() => t,
+        _ => return,
+    };
+    let font_color = CssColor { r: 30, g: 30, b: 30, a: 255 };
+    let rect = Rect {
+        x: lb.dimensions.content.x,
+        y: lb.dimensions.content.y - scroll_y,
         width: (text.len() as f32 * 7.0).min(lb.dimensions.content.width),
         height: 14.0,
     };
