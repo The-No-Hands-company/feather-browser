@@ -46,6 +46,7 @@ mod inner {
 
     impl FontMetrics {
         pub fn load(size: f32) -> Self {
+            let size = if !size.is_finite() || size <= 0.0 { 16.0 } else { size.clamp(1.0, 512.0) };
             let font = shared_font();
             let lm = font
                 .horizontal_line_metrics(size)

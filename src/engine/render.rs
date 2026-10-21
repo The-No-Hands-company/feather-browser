@@ -97,7 +97,9 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
         let origin_y = lb.dimensions.content.y - scroll_y;
         for line in &lb.line_boxes {
             let baseline_y = (origin_y + line.y + line.baseline) as i32;
-            if baseline_y < -(font.ascent as i32) || baseline_y > canvas.height as i32 {
+            let line_top_y = (origin_y + line.y) as i32;
+            let line_bottom_y = (origin_y + line.y + line.height) as i32;
+            if line_bottom_y < 0 || line_top_y > canvas.height as i32 {
                 continue;
             }
             for item in &line.items {

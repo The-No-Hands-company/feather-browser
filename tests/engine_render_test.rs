@@ -107,3 +107,24 @@ fn test_larger_font_size_covers_more_canvas_pixels() {
         "32px font should cover more non-white pixels than 16px: large={large_pixels}, small={small_pixels}"
     );
 }
+
+#[test]
+fn test_huge_font_size_does_not_panic() {
+    use feather::engine::font::FontMetrics;
+    let m = FontMetrics::load(100_000.0);
+    assert!(m.size <= 512.0, "huge font-size must be clamped: got {}", m.size);
+}
+
+#[test]
+fn test_negative_font_size_falls_back_to_default() {
+    use feather::engine::font::FontMetrics;
+    let m = FontMetrics::load(-1.0);
+    assert_eq!(m.size, 16.0);
+}
+
+#[test]
+fn test_zero_font_size_falls_back_to_default() {
+    use feather::engine::font::FontMetrics;
+    let m = FontMetrics::load(0.0);
+    assert_eq!(m.size, 16.0);
+}

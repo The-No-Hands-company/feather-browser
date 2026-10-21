@@ -97,42 +97,43 @@ impl InlineFormattingContext {
 
         if items.is_empty() { return (vec![], 0.0); }
 
-        let font = FontMetrics::load_cached(self.font_size);
-        let line_height = font.line_height;
-        let space_advance = font.space_advance;
-        let baseline = font.ascent;
-
         let mut lines: Vec<LineBox> = Vec::new();
         let mut current_items: Vec<PlacedInlineItem> = Vec::new();
         let mut cursor_x: f32 = 0.0;
         let mut line_y: f32 = 0.0;
+        let mut cur_line_height: f32 = 0.0;
+        let mut cur_baseline: f32 = 0.0;
 
-        // Inline flush helper — inlined to avoid closure borrow-check issues
         macro_rules! flush_line {
             () => {
                 if !current_items.is_empty() {
+                    let lh = if cur_line_height > 0.0 { cur_line_height } else { 16.0 };
+                    let bl = if cur_baseline > 0.0 { cur_baseline } else { 12.8 };
                     lines.push(LineBox {
                         items: std::mem::take(&mut current_items),
                         y: line_y,
-                        height: line_height,
-                        baseline,
+                        height: lh,
+                        baseline: bl,
                     });
-                    line_y += line_height;
+                    line_y += lh;
                     cursor_x = 0.0;
+                    cur_line_height = 0.0;
+                    cur_baseline = 0.0;
                 }
             };
         }
 
         for item in items {
+            let item_font = FontMetrics::load_cached(item.font_size);
             let words: Vec<&str> = item.text.split_whitespace().collect();
             if words.is_empty() { continue; }
             for word in words.iter() {
-                let w = font.measure_str(word);
-                let gap = if cursor_x == 0.0 { 0.0 } else { space_advance };
+                let w = item_font.measure_str(word);
+                let gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
                 if cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
                     flush_line!();
                 }
-                let actual_gap = if cursor_x == 0.0 { 0.0 } else { space_advance };
+                let actual_gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
                 let x = cursor_x + actual_gap;
                 current_items.push(PlacedInlineItem {
                     text: word.to_string(),
@@ -142,6 +143,8 @@ impl InlineFormattingContext {
                     color: item.color,
                 });
                 cursor_x = x + w;
+                cur_line_height = cur_line_height.max(item_font.line_height);
+                cur_baseline = cur_baseline.max(item_font.ascent);
             }
         }
         flush_line!();
