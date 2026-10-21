@@ -186,3 +186,14 @@ fn test_child_selector_does_not_match_grandchild() {
     // div > p should NOT match — p's direct parent is section, not div
     assert_eq!(p.properties.get("color"), None);
 }
+
+#[test]
+fn test_deep_selector_chain_no_panic() {
+    // 50 levels of "a " — exceeds the depth cap of 32; must parse without panicking.
+    let deep_selector = "a ".repeat(50) + "b { color: red }";
+    let sheet = CssParser::parse(&deep_selector);
+    // Parser must return at least one rule (the part up to depth 32).
+    assert!(!sheet.rules.is_empty(), "should produce at least one rule");
+    // The parsed selector must be a valid Selector (tag_name Some("b")).
+    assert_eq!(sheet.rules[0].selectors[0].tag_name.as_deref(), Some("b"));
+}

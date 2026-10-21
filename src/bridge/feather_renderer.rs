@@ -30,6 +30,7 @@ struct Inner {
     suspended_url: Option<String>,
     scroll_offset: f32,
     doc_height: f32,
+    layout_root: Option<crate::engine::layout::LayoutBox>,
 }
 
 #[derive(Clone)]
@@ -58,6 +59,7 @@ impl FeatherRenderer {
             suspended_url: None,
             scroll_offset: 0.0,
             doc_height: 0.0,
+            layout_root: None,
         }));
 
         {
@@ -119,7 +121,24 @@ impl FeatherRenderer {
                     let viewport_h = s.drawing_area.height() as f32;
                     let max_scroll = (s.doc_height - viewport_h).max(0.0);
                     s.scroll_offset = (s.scroll_offset + dy as f32 * 40.0).clamp(0.0, max_scroll);
-                    s.drawing_area.queue_draw();
+                    // Re-render with the new scroll offset so the draw function shows updated content.
+                    if let Some(ref layout_root) = s.layout_root {
+                        let w = s.drawing_area.width().max(1);
+                        let h = s.drawing_area.height().max(1);
+                        let viewport = crate::engine::layout::Rect {
+                            x: 0.0,
+                            y: s.scroll_offset,
+                            width: w as f32,
+                            height: h as f32,
+                        };
+                        let canvas = crate::engine::render::Painter::paint(layout_root, viewport, 16.0);
+                        s.pixel_buf = Some(crate::engine::render::canvas_to_bgra(&canvas));
+                        s.pixel_w = w as u32;
+                        s.pixel_h = h as u32;
+                    }
+                    let area = s.drawing_area.clone();
+                    drop(s);
+                    area.queue_draw();
                 }
                 glib::Propagation::Stop
             });
@@ -151,6 +170,7 @@ impl FeatherRenderer {
             let mut s = self.inner.borrow_mut();
             s.doc_height = layout_root.dimensions.margin_box().height;
             s.scroll_offset = 0.0;
+            s.layout_root = Some(layout_root.clone());
         }
         let scroll_offset = self.inner.borrow().scroll_offset;
         let viewport = Rect { x: 0.0, y: scroll_offset, width: w as f32, height: h as f32 };

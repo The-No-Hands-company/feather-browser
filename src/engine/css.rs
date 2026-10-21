@@ -167,7 +167,9 @@ impl CssParser {
 
     fn parse_compound_selector(&mut self) -> Selector {
         let mut left = self.parse_simple_selector();
+        let mut depth: usize = 0;
         loop {
+            if depth >= 32 { break; }
             // Detect combinator: whitespace before a non-special char, or explicit '>'
             let had_whitespace = !self.eof() && self.input[self.pos].is_whitespace();
             self.skip_whitespace_and_comments();
@@ -193,6 +195,7 @@ impl CssParser {
                 classes: right.classes,
                 ancestor: Some((combinator, Box::new(left))),
             };
+            depth += 1;
         }
         left
     }
