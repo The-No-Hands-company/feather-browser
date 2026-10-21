@@ -97,7 +97,7 @@ impl InlineFormattingContext {
 
         if items.is_empty() { return (vec![], 0.0); }
 
-        let font = FontMetrics::load(self.font_size);
+        let font = FontMetrics::load_cached(self.font_size);
         let line_height = font.line_height;
         let space_advance = font.space_advance;
         let baseline = font.ascent;
