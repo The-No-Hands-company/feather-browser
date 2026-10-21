@@ -44,10 +44,32 @@ impl Node {
             children: Vec::new(),
         }
     }
+
+    /// Returns the tag name if this is an Element node, else None.
+    pub fn tag_name(&self) -> Option<&str> {
+        match &self.node_type {
+            NodeType::Element(e) => Some(&e.tag_name),
+            _ => None,
+        }
+    }
+
+    /// Returns the element data if this is an Element node, else None.
+    pub fn element_data(&self) -> Option<&ElementData> {
+        match &self.node_type {
+            NodeType::Element(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 /// A parsed document.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Dom {
     pub root: Node,
+}
+
+impl Dom {
+    pub fn new(root: Node) -> Self {
+        Self { root }
+    }
 }
