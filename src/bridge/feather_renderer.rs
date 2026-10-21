@@ -130,17 +130,52 @@ impl FeatherRenderer {
             s.title = title.clone();
         }
 
+        // Take each callback list before invoking to avoid re-entrant borrow panics.
         let url_str = url.to_string();
-        for cb in self.inner.borrow().url_cbs.iter() {
-            cb(url_str.clone());
-        }
-        for cb in self.inner.borrow().title_cbs.iter() {
-            cb(title.clone());
-        }
+        let url_cbs = std::mem::take(&mut self.inner.borrow_mut().url_cbs);
+        for cb in &url_cbs { cb(url_str.clone()); }
+        self.inner.borrow_mut().url_cbs = url_cbs;
+
+        let title_cbs = std::mem::take(&mut self.inner.borrow_mut().title_cbs);
+        for cb in &title_cbs { cb(title.clone()); }
+        self.inner.borrow_mut().title_cbs = title_cbs;
+
         self.inner.borrow().drawing_area.queue_draw();
-        for cb in self.inner.borrow().load_done_cbs.iter() {
-            cb();
-        }
+
+        let load_done_cbs = std::mem::take(&mut self.inner.borrow_mut().load_done_cbs);
+        for cb in &load_done_cbs { cb(); }
+        self.inner.borrow_mut().load_done_cbs = load_done_cbs;
+    }
+
+    /// Fetch + render without touching history. Used by go_back, go_forward, reload.
+    fn fetch_and_render_url(&self, url: String) {
+        let renderer = self.clone();
+        let url_clone = url.clone();
+        let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
+        std::thread::spawn(move || {
+            let result = network::fetch_page(&url_clone)
+                .map(|r| r.html)
+                .map_err(|e| e.0);
+            let _ = tx.send(result);
+        });
+        glib::idle_add_local(move || {
+            match rx.try_recv() {
+                Ok(Ok(html)) => {
+                    renderer.render_page(&html, &url);
+                    glib::ControlFlow::Break
+                }
+                Ok(Err(e)) => {
+                    let error_html = format!(
+                        "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
+                        e
+                    );
+                    renderer.render_page(&error_html, &url);
+                    glib::ControlFlow::Break
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => glib::ControlFlow::Continue,
+                Err(_) => glib::ControlFlow::Break,
+            }
+        });
     }
 }
 
@@ -200,7 +235,7 @@ impl PageRenderer for FeatherRenderer {
             s.history_pos -= 1;
             s.history[s.history_pos].clone()
         };
-        self.load_url(&url);
+        self.fetch_and_render_url(url);
     }
 
     fn go_forward(&self) {
@@ -210,12 +245,12 @@ impl PageRenderer for FeatherRenderer {
             s.history_pos += 1;
             s.history[s.history_pos].clone()
         };
-        self.load_url(&url);
+        self.fetch_and_render_url(url);
     }
 
     fn reload(&self) {
         let url = self.inner.borrow().url.clone();
-        if !url.is_empty() { self.load_url(&url); }
+        if !url.is_empty() { self.fetch_and_render_url(url); }
     }
 
     fn stop(&self) {}
