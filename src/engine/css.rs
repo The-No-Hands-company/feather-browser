@@ -11,6 +11,12 @@ pub enum Unit {
     Percent,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Combinator {
+    Descendant,
+    Child,
+}
+
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub struct CssColor {
     pub r: u8,
@@ -74,15 +80,19 @@ pub struct Selector {
     pub tag_name: Option<String>,
     pub id: Option<String>,
     pub classes: Vec<String>,
+    pub ancestor: Option<(Combinator, Box<Selector>)>,
 }
 
 impl Selector {
     /// Returns (id_count, class_count, tag_count) — higher is more specific.
     pub fn specificity(&self) -> (usize, usize, usize) {
+        let (ai, ac, at) = self.ancestor.as_ref()
+            .map(|(_, a)| a.specificity())
+            .unwrap_or((0, 0, 0));
         (
-            self.id.is_some() as usize,
-            self.classes.len(),
-            self.tag_name.is_some() as usize,
+            ai + self.id.is_some() as usize,
+            ac + self.classes.len(),
+            at + self.tag_name.is_some() as usize,
         )
     }
 }
@@ -147,7 +157,7 @@ impl CssParser {
         loop {
             self.skip_whitespace_and_comments();
             if self.eof() || self.current() == '{' { break; }
-            selectors.push(self.parse_simple_selector());
+            selectors.push(self.parse_compound_selector());
             self.skip_whitespace_and_comments();
             if self.eof() || self.current() != ',' { break; }
             self.consume(); // ','
@@ -155,8 +165,40 @@ impl CssParser {
         selectors
     }
 
+    fn parse_compound_selector(&mut self) -> Selector {
+        let mut left = self.parse_simple_selector();
+        loop {
+            // Detect combinator: whitespace before a non-special char, or explicit '>'
+            let had_whitespace = !self.eof() && self.input[self.pos].is_whitespace();
+            self.skip_whitespace_and_comments();
+            if self.eof() || self.current() == '{' || self.current() == ',' {
+                break;
+            }
+            let combinator = if self.current() == '>' {
+                self.consume(); // '>'
+                self.skip_whitespace_and_comments();
+                Combinator::Child
+            } else if had_whitespace
+                && (self.current().is_alphanumeric()
+                    || matches!(self.current(), '#' | '.' | '*'))
+            {
+                Combinator::Descendant
+            } else {
+                break;
+            };
+            let right = self.parse_simple_selector();
+            left = Selector {
+                tag_name: right.tag_name,
+                id: right.id,
+                classes: right.classes,
+                ancestor: Some((combinator, Box::new(left))),
+            };
+        }
+        left
+    }
+
     fn parse_simple_selector(&mut self) -> Selector {
-        let mut sel = Selector { tag_name: None, id: None, classes: Vec::new() };
+        let mut sel = Selector { tag_name: None, id: None, classes: Vec::new(), ancestor: None };
         while !self.eof() {
             let c = self.current();
             if c == '#' {
