@@ -155,8 +155,8 @@ fn test_render_loop_pen_advances_with_cached_glyphs() {
     // "Hello" is 5 chars; if pen advance works (advance_width > 0 per char),
     // rendered glyphs should span at least 10 distinct columns
     assert!(
-        non_white_cols >= 10,
-        "Text 'Hello' should span ≥10 non-white columns; got {non_white_cols} \
+        non_white_cols >= 25,
+        "Text 'Hello' should span ≥25 non-white columns; got {non_white_cols} \
          (advance_width may be 0, stacking all chars at x=0)"
     );
 }
