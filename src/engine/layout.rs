@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use crate::engine::css::{Unit, Value};
+use crate::engine::css::{CssColor, Unit, Value};
 use crate::engine::dom::NodeType;
 use crate::engine::style::StyledNode;
 
@@ -57,6 +57,107 @@ pub enum BoxType {
     Anonymous,
 }
 
+/// A word or text fragment placed on a line box.
+#[derive(Debug, Clone)]
+pub struct PlacedInlineItem {
+    pub text: String,
+    pub x: f32,
+    pub width: f32,
+    pub font_size: f32,
+    pub color: CssColor,
+}
+
+/// One horizontal line in an inline formatting context.
+#[derive(Debug, Clone)]
+pub struct LineBox {
+    pub items: Vec<PlacedInlineItem>,
+    pub y: f32,
+    pub height: f32,
+    pub baseline: f32,
+}
+
+/// Input item for the inline formatting context.
+#[derive(Debug, Clone)]
+pub struct InlineText {
+    pub text: String,
+    pub color: CssColor,
+    pub font_size: f32,
+}
+
+/// Lays inline text runs into line boxes using a greedy left-to-right algorithm.
+pub struct InlineFormattingContext {
+    pub font_size: f32,
+    pub available_width: f32,
+}
+
+#[cfg(feature = "feather-renderer")]
+impl InlineFormattingContext {
+    pub fn layout(&self, items: &[InlineText]) -> (Vec<LineBox>, f32) {
+        use crate::engine::font::FontMetrics;
+
+        if items.is_empty() { return (vec![], 0.0); }
+
+        let font = FontMetrics::load(self.font_size);
+        let line_height = font.line_height;
+        let space_advance = font.space_advance;
+        let baseline = font.ascent;
+
+        let mut lines: Vec<LineBox> = Vec::new();
+        let mut current_items: Vec<PlacedInlineItem> = Vec::new();
+        let mut cursor_x: f32 = 0.0;
+        let mut line_y: f32 = 0.0;
+
+        // Inline flush helper — inlined to avoid closure borrow-check issues
+        macro_rules! flush_line {
+            () => {
+                if !current_items.is_empty() {
+                    lines.push(LineBox {
+                        items: std::mem::take(&mut current_items),
+                        y: line_y,
+                        height: line_height,
+                        baseline,
+                    });
+                    line_y += line_height;
+                    cursor_x = 0.0;
+                }
+            };
+        }
+
+        for item in items {
+            let words: Vec<&str> = item.text.split_whitespace().collect();
+            if words.is_empty() { continue; }
+            for word in words.iter() {
+                let w = font.measure_str(word);
+                let gap = if cursor_x == 0.0 { 0.0 } else { space_advance };
+                if cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
+                    flush_line!();
+                }
+                let actual_gap = if cursor_x == 0.0 { 0.0 } else { space_advance };
+                let x = cursor_x + actual_gap;
+                current_items.push(PlacedInlineItem {
+                    text: word.to_string(),
+                    x,
+                    width: w,
+                    font_size: item.font_size,
+                    color: item.color,
+                });
+                cursor_x = x + w;
+            }
+        }
+        flush_line!();
+
+        let total_height = line_y;
+        (lines, total_height)
+    }
+}
+
+#[cfg(not(feature = "feather-renderer"))]
+impl InlineFormattingContext {
+    pub fn layout(&self, _items: &[InlineText]) -> (Vec<LineBox>, f32) {
+        (vec![], 0.0)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct LayoutBox {
     pub dimensions: Dimensions,
@@ -64,6 +165,7 @@ pub struct LayoutBox {
     /// Non-None for text leaf nodes.
     pub text: Option<String>,
     pub children: Vec<LayoutBox>,
+    pub line_boxes: Vec<LineBox>,
 }
 
 impl LayoutBox {
@@ -73,6 +175,7 @@ impl LayoutBox {
             box_type,
             text: None,
             children: Vec::new(),
+            line_boxes: Vec::new(),
         }
     }
 
@@ -161,11 +264,84 @@ fn layout_box(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
     }
 }
 
+fn all_inline_children(children: &[LayoutBox]) -> bool {
+    !children.is_empty()
+        && children.iter().all(|c| matches!(c.box_type, BoxType::Anonymous | BoxType::Inline(_)))
+}
+
+fn collect_inline_text(children: &[LayoutBox]) -> Vec<InlineText> {
+    let mut items = Vec::new();
+    for child in children {
+        match &child.box_type {
+            BoxType::Anonymous => {
+                if let Some(t) = &child.text {
+                    if !t.trim().is_empty() {
+                        items.push(InlineText {
+                            text: t.clone(),
+                            color: CssColor { r: 30, g: 30, b: 30, a: 255 },
+                            font_size: 16.0,
+                        });
+                    }
+                }
+            }
+            BoxType::Inline(s) => {
+                let color = match s.properties.get("color") {
+                    Some(Value::Color(c)) => *c,
+                    _ => CssColor { r: 30, g: 30, b: 30, a: 255 },
+                };
+                let font_size = match s.properties.get("font-size") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => 16.0,
+                };
+                collect_text_from_layout_children(&child.children, color, font_size, &mut items);
+            }
+            BoxType::Block(_) => {}
+        }
+    }
+    items
+}
+
+fn collect_text_from_layout_children(
+    children: &[LayoutBox],
+    color: CssColor,
+    font_size: f32,
+    out: &mut Vec<InlineText>,
+) {
+    for child in children {
+        if let Some(t) = &child.text {
+            if !t.trim().is_empty() {
+                out.push(InlineText { text: t.clone(), color, font_size });
+            }
+        }
+        collect_text_from_layout_children(&child.children, color, font_size, out);
+    }
+}
+
 fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
     calculate_block_width(lb, containing);
     calculate_block_position(lb, containing);
-    layout_block_children(lb, depth);
-    calculate_block_height(lb);
+    if all_inline_children(&lb.children) {
+        let font_size = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("font-size") {
+                Some(Value::Length(n, Unit::Px)) => *n,
+                _ => 16.0,
+            },
+            BoxType::Anonymous => 16.0,
+        };
+        let items = collect_inline_text(&lb.children);
+        if !items.is_empty() {
+            let ifc = InlineFormattingContext {
+                font_size,
+                available_width: lb.dimensions.content.width.max(1.0),
+            };
+            let (line_boxes, height) = ifc.layout(&items);
+            lb.line_boxes = line_boxes;
+            lb.dimensions.content.height = height;
+        }
+    } else {
+        layout_block_children(lb, depth);
+        calculate_block_height(lb);
+    }
 }
 
 fn calculate_block_width(lb: &mut LayoutBox, containing: &Dimensions) {
