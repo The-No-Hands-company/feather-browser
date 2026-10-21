@@ -149,6 +149,7 @@ impl FeatherRenderer {
 
     /// Fetch + render without touching history. Used by go_back, go_forward, reload.
     fn fetch_and_render_url(&self, url: String) {
+        self.inner.borrow_mut().url = url.clone();
         let renderer = self.clone();
         let url_clone = url.clone();
         let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
