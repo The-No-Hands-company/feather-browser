@@ -269,7 +269,7 @@ fn all_inline_children(children: &[LayoutBox]) -> bool {
         && children.iter().all(|c| matches!(c.box_type, BoxType::Anonymous | BoxType::Inline(_)))
 }
 
-fn collect_inline_text(children: &[LayoutBox]) -> Vec<InlineText> {
+fn collect_inline_text(children: &[LayoutBox], parent_font_size: f32) -> Vec<InlineText> {
     let mut items = Vec::new();
     for child in children {
         match &child.box_type {
@@ -279,7 +279,7 @@ fn collect_inline_text(children: &[LayoutBox]) -> Vec<InlineText> {
                         items.push(InlineText {
                             text: t.clone(),
                             color: CssColor { r: 30, g: 30, b: 30, a: 255 },
-                            font_size: 16.0,
+                            font_size: parent_font_size,
                         });
                     }
                 }
@@ -328,7 +328,7 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
             },
             BoxType::Anonymous => 16.0,
         };
-        let items = collect_inline_text(&lb.children);
+        let items = collect_inline_text(&lb.children, font_size);
         if !items.is_empty() {
             let ifc = InlineFormattingContext {
                 font_size,

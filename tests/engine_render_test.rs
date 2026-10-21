@@ -70,3 +70,40 @@ fn test_blit_glyph_writes_pixels() {
     let has_dark = canvas.pixels.iter().any(|p| p.r < 255);
     assert!(has_dark, "blit_glyph must write non-white pixels onto the canvas");
 }
+
+#[test]
+fn test_larger_font_size_covers_more_canvas_pixels() {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    use feather::engine::css::CssColor;
+
+    let viewport = Rect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+
+    let dom_large = HtmlParser::parse("<p>X</p>");
+    let sheet_large = CssParser::parse("p { font-size: 32px; color: black; }");
+    let styled_large = style_tree(&dom_large.root, &sheet_large);
+    let layout_large = LayoutEngine::build(&styled_large, 200.0);
+    let canvas_large = Painter::paint(&layout_large, viewport, 16.0);
+
+    let dom_small = HtmlParser::parse("<p>X</p>");
+    let sheet_small = CssParser::parse("p { font-size: 16px; color: black; }");
+    let styled_small = style_tree(&dom_small.root, &sheet_small);
+    let layout_small = LayoutEngine::build(&styled_small, 200.0);
+    let canvas_small = Painter::paint(&layout_small, viewport, 16.0);
+
+    let non_white = |canvas: &feather::engine::render::Canvas| {
+        canvas.pixels.iter().filter(|&&p| p != CssColor::WHITE).count()
+    };
+    let large_pixels = non_white(&canvas_large);
+    let small_pixels = non_white(&canvas_small);
+
+    assert!(
+        large_pixels > small_pixels,
+        "32px font should cover more non-white pixels than 16px: large={large_pixels}, small={small_pixels}"
+    );
+}

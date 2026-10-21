@@ -75,7 +75,7 @@ impl Painter {
         let mut canvas = Canvas::new(width.max(1), height.max(1));
         #[cfg(feature = "feather-renderer")]
         {
-            let font = crate::engine::font::FontMetrics::load(font_size);
+            let font = crate::engine::font::FontMetrics::load_cached(font_size);
             render_box(&mut canvas, layout_root, &font, viewport.y, 0);
         }
         #[cfg(not(feature = "feather-renderer"))]
@@ -101,11 +101,12 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
                 continue;
             }
             for item in &line.items {
+                let item_font = crate::engine::font::FontMetrics::load_cached(item.font_size);
                 let mut pen_x = (origin_x + item.x) as i32;
                 for ch in item.text.chars() {
-                    let glyph = font.rasterize(ch);
+                    let glyph = item_font.rasterize(ch);
                     blit_glyph(canvas, &glyph, pen_x, baseline_y, item.color);
-                    pen_x += font.advance_width(ch) as i32;
+                    pen_x = pen_x.saturating_add(item_font.advance_width(ch) as i32);
                 }
             }
         }
