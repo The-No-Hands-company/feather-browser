@@ -7,6 +7,7 @@ pub struct HibernationManager {
     delay: Duration,
     idle_since: HashMap<TabId, Instant>,
     simulated_elapsed: Option<Duration>, // for tests only
+    enabled: bool,
 }
 
 impl HibernationManager {
@@ -15,6 +16,7 @@ impl HibernationManager {
             delay: Duration::from_secs(delay_secs as u64),
             idle_since: HashMap::new(),
             simulated_elapsed: None,
+            enabled: delay_secs > 0,
         }
     }
 
@@ -26,7 +28,13 @@ impl HibernationManager {
             delay: Duration::from_secs(0),
             idle_since: HashMap::new(),
             simulated_elapsed: Some(Duration::from_secs(999)),
+            enabled: true,
         }
+    }
+
+    /// Enables or disables the hibernation timer at runtime (wired to the Freeze toggle).
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     /// Call on every tab switch. Marks old tab as Idle, resumes new tab if Hibernated.
@@ -52,6 +60,9 @@ impl HibernationManager {
 
     /// Call periodically (or after a timer) to hibernate overdue idle tabs.
     pub fn check_and_hibernate(&mut self, tabs: &mut Vec<Tab>) {
+        if !self.enabled {
+            return;
+        }
         let now = Instant::now();
         let overdue: Vec<TabId> = self
             .idle_since

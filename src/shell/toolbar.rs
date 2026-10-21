@@ -6,6 +6,9 @@ use gtk4::{Box as GBox, Button, Entry, Orientation, ToggleButton};
 pub struct Toolbar {
     widget: GBox,
     url_entry: Entry,
+    back_btn: Button,
+    fwd_btn: Button,
+    reload_btn: Button,
     adblock_toggle: ToggleButton,
     freeze_toggle: ToggleButton,
 }
@@ -41,7 +44,7 @@ impl Toolbar {
         hbox.append(&adblock_toggle);
         hbox.append(&freeze_toggle);
 
-        Self { widget: hbox, url_entry, adblock_toggle, freeze_toggle }
+        Self { widget: hbox, url_entry, back_btn, fwd_btn, reload_btn, adblock_toggle, freeze_toggle }
     }
 
     pub fn widget(&self) -> gtk4::Widget { self.widget.clone().upcast() }
@@ -58,9 +61,23 @@ impl Toolbar {
     }
 
     pub fn connect_back<F: Fn() + 'static>(&self, f: F) {
-        // Back button accessed via children — store reference if needed
-        // For v0.1, wire through window.rs callback binding
-        let _ = f;
+        self.back_btn.connect_clicked(move |_| f());
+    }
+
+    pub fn connect_forward<F: Fn() + 'static>(&self, f: F) {
+        self.fwd_btn.connect_clicked(move |_| f());
+    }
+
+    pub fn connect_reload<F: Fn() + 'static>(&self, f: F) {
+        self.reload_btn.connect_clicked(move |_| f());
+    }
+
+    pub fn connect_adblock_toggled<F: Fn(bool) + 'static>(&self, f: F) {
+        self.adblock_toggle.connect_toggled(move |btn| f(btn.is_active()));
+    }
+
+    pub fn connect_freeze_toggled<F: Fn(bool) + 'static>(&self, f: F) {
+        self.freeze_toggle.connect_toggled(move |btn| f(btn.is_active()));
     }
 
     pub fn adblock_enabled(&self) -> bool { self.adblock_toggle.is_active() }

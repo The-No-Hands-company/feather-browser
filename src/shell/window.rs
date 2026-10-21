@@ -6,7 +6,7 @@ use crate::shell::tab_manager::{TabId, TabManager};
 use crate::shell::toolbar::Toolbar;
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GBox, Orientation, Stack};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 #[cfg(feature = "webkit-renderer")]
@@ -26,6 +26,9 @@ impl FeatherWindow {
             .build();
 
         let tab_manager: Rc<RefCell<TabManager>> = Rc::new(RefCell::new(TabManager::new()));
+
+        // Shared adblock flag — passed to every WebKitRenderer and the toolbar toggle.
+        let adblock_flag = Rc::new(Cell::new(settings.adblock_enabled));
 
         // GTK timer fires every 10s to check idle tabs
         let mgr_for_timer = Rc::clone(&tab_manager);
@@ -64,6 +67,8 @@ impl FeatherWindow {
             let stack = Rc::clone(&content_stack);
             let tb = Rc::clone(&toolbar);
             let rd = Rc::clone(&redraw_fn);
+            let hib = Rc::clone(&hib_mgr);
+            let adblock_flag_new = Rc::clone(&adblock_flag);
             let homepage = settings.homepage.clone();
 
             *redraw_fn.borrow_mut() = Box::new(move || {
@@ -75,11 +80,17 @@ impl FeatherWindow {
                     stack.set_visible_child_name(&format!("tab-{}", tab.id));
                 }
 
-                // on_click: switch active tab, then redraw
+                // on_click: mark old tab Idle, resume new tab if hibernated, switch, redraw
                 let mgr_c1 = Rc::clone(&mgr);
+                let hib_c1 = Rc::clone(&hib);
                 let rd_c1 = Rc::clone(&rd);
                 let on_click = move |id: TabId| {
-                    { mgr_c1.borrow_mut().switch_to(id); }
+                    let old_id = mgr_c1.borrow().active_tab().map(|t| t.id);
+                    {
+                        let mut m = mgr_c1.borrow_mut();
+                        hib_c1.borrow_mut().on_tab_switched(old_id, id, m.tabs_mut());
+                        m.switch_to(id);
+                    }
                     (rd_c1.borrow())();
                 };
 
@@ -104,10 +115,12 @@ impl FeatherWindow {
                 let rd_c3 = Rc::clone(&rd);
                 let stack_c = Rc::clone(&stack);
                 let homepage_c = homepage.clone();
+                // Clone here so on_new can be called multiple times (Fn, not FnOnce).
+                let _adblock_for_new = Rc::clone(&adblock_flag_new);
                 let on_new = move || {
                     #[cfg(feature = "webkit-renderer")]
                     let renderer: Box<dyn PageRenderer> =
-                        Box::new(WebKitRenderer::new());
+                        Box::new(WebKitRenderer::new(Rc::clone(&_adblock_for_new)));
                     #[cfg(not(feature = "webkit-renderer"))]
                     let renderer: Box<dyn PageRenderer> =
                         Box::new(crate::bridge::MockRenderer::new(&homepage_c));
@@ -150,7 +163,8 @@ impl FeatherWindow {
         // Open initial tab
         {
             #[cfg(feature = "webkit-renderer")]
-            let renderer: Box<dyn PageRenderer> = Box::new(WebKitRenderer::new());
+            let renderer: Box<dyn PageRenderer> =
+                Box::new(WebKitRenderer::new(Rc::clone(&adblock_flag)));
             #[cfg(not(feature = "webkit-renderer"))]
             let renderer: Box<dyn PageRenderer> =
                 Box::new(crate::bridge::MockRenderer::new(&settings.homepage));
@@ -193,6 +207,49 @@ impl FeatherWindow {
                 if let Some(tab) = mgr_ref.active_tab() {
                     tab.renderer.load_url(&url);
                 }
+            });
+        }
+
+        // Wire back / forward / reload to the active tab's renderer
+        {
+            let mgr = Rc::clone(&tab_manager);
+            toolbar.connect_back(move || {
+                if let Some(tab) = mgr.borrow().active_tab() { tab.renderer.go_back(); }
+            });
+        }
+        {
+            let mgr = Rc::clone(&tab_manager);
+            toolbar.connect_forward(move || {
+                if let Some(tab) = mgr.borrow().active_tab() { tab.renderer.go_forward(); }
+            });
+        }
+        {
+            let mgr = Rc::clone(&tab_manager);
+            toolbar.connect_reload(move || {
+                if let Some(tab) = mgr.borrow().active_tab() { tab.renderer.reload(); }
+            });
+        }
+
+        // Wire Shield toggle → shared adblock flag + settings persist
+        {
+            let flag = Rc::clone(&adblock_flag);
+            toolbar.connect_adblock_toggled(move |enabled| {
+                flag.set(enabled);
+                let mut s = crate::settings::Settings::load();
+                s.adblock_enabled = enabled;
+                let _ = s.save();
+            });
+        }
+
+        // Wire Freeze toggle → hibernation manager + settings persist
+        {
+            let hib = Rc::clone(&hib_mgr);
+            let base_delay = settings.auto_hibernate_delay_secs;
+            toolbar.connect_freeze_toggled(move |enabled| {
+                hib.borrow_mut().set_enabled(enabled);
+                let mut s = crate::settings::Settings::load();
+                s.auto_hibernate_delay_secs = if enabled { base_delay } else { 0 };
+                let _ = s.save();
             });
         }
 

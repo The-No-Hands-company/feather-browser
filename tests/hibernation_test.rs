@@ -4,6 +4,30 @@ use feather::features::tab_hibernation::HibernationManager;
 use feather::shell::tab_manager::{Tab, TabState};
 use std::time::Duration;
 
+#[test]
+fn test_set_enabled_false_prevents_hibernation() {
+    let mut mgr = HibernationManager::new_with_elapsed(Duration::from_secs(0));
+    let mut tabs = vec![make_tab(1, "https://a.com"), make_tab(2, "https://b.com")];
+    mgr.on_tab_switched(Some(1), 2, &mut tabs);
+    mgr.set_enabled(false);
+    mgr.check_and_hibernate(&mut tabs);
+    // Freeze is off — tab 1 stays Idle, never hibernated
+    assert_eq!(tabs[0].state, TabState::Idle);
+}
+
+#[test]
+fn test_set_enabled_true_restores_hibernation() {
+    let mut mgr = HibernationManager::new_with_elapsed(Duration::from_secs(0));
+    let mut tabs = vec![make_tab(1, "https://a.com"), make_tab(2, "https://b.com")];
+    mgr.on_tab_switched(Some(1), 2, &mut tabs);
+    mgr.set_enabled(false);
+    mgr.check_and_hibernate(&mut tabs);
+    assert_eq!(tabs[0].state, TabState::Idle);
+    mgr.set_enabled(true);
+    mgr.check_and_hibernate(&mut tabs);
+    assert_eq!(tabs[0].state, TabState::Hibernated);
+}
+
 fn make_tab(id: u64, url: &str) -> Tab {
     let renderer = Box::new(MockRenderer::new(url));
     Tab::new(id, url, renderer)

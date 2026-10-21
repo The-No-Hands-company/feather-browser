@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use super::PageRenderer;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 // webkit2gtk 2.0 does not expose a `prelude` module; import traits directly.
 use webkit2gtk::{LoadEvent, PolicyDecisionType, SettingsExt, WebView, WebViewExt};
@@ -27,7 +27,7 @@ impl WebKitRenderer {
     // `NavigationPolicyDecisionExt::request` is deprecated since webkit2gtk 2.6;
     // we target 2.0.x where it is the correct API.
     #[allow(deprecated)]
-    pub fn new() -> Self {
+    pub fn new(adblock_enabled: Rc<Cell<bool>>) -> Self {
         let webview = WebView::new();
         // Sensible security defaults.
         if let Some(settings) = WebViewExt::settings(&webview) {
@@ -36,7 +36,9 @@ impl WebKitRenderer {
             settings.set_enable_media(true); // requires webkit2gtk feature "v2_26" (included via "v2_40")
             settings.set_allow_modal_dialogs(false);
         }
-        // Wire ad blocker into WebKit policy decisions
+        // Wire ad blocker into WebKit policy decisions.
+        // The adblock_enabled flag is shared with the toolbar toggle — setting it
+        // to false at runtime bypasses the blocker without reloading the blocklist.
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         let config_dir = format!("{}/.config/feather", home);
         crate::features::ad_blocker::AdBlocker::bundle_default_blocklist(&config_dir);
@@ -47,6 +49,9 @@ impl WebKitRenderer {
         webview.connect_decide_policy(move |_view, decision, decision_type| {
             use webkit2gtk::glib::Cast;
             use webkit2gtk::{NavigationPolicyDecisionExt, PolicyDecisionExt, URIRequestExt};
+            if !adblock_enabled.get() {
+                return false;
+            }
             if decision_type == PolicyDecisionType::NavigationAction {
                 if let Ok(nav) = decision.clone().downcast::<webkit2gtk::NavigationPolicyDecision>() {
                     if let Some(req) = nav.request() {
@@ -72,7 +77,7 @@ impl WebKitRenderer {
 
 impl Default for WebKitRenderer {
     fn default() -> Self {
-        Self::new()
+        Self::new(Rc::new(Cell::new(true)))
     }
 }
 
