@@ -37,3 +37,4 @@ logs/
 
 # Legacy pronbrow reference files (local only)
 legacy/
+.worktrees/
