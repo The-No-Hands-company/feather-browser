@@ -197,3 +197,110 @@ fn test_deep_selector_chain_no_panic() {
     // The parsed selector must be a valid Selector (tag_name Some("b")).
     assert_eq!(sheet.rules[0].selectors[0].tag_name.as_deref(), Some("b"));
 }
+
+#[test]
+fn test_descendant_selector_matches_with_intermediate_element() {
+    // "div span" should match a span inside a section inside a div
+    use feather::engine::css::CssParser;
+    use feather::engine::dom::{ElementData, Node, NodeType};
+    use feather::engine::style::style_tree;
+    use feather::engine::css::{CssColor, Value};
+    use std::collections::HashMap;
+
+    let css = CssParser::parse("div span { color: red }");
+
+    let span_node = Node {
+        node_type: NodeType::Element(ElementData {
+            tag_name: "span".into(),
+            attributes: HashMap::new(),
+        }),
+        children: vec![],
+    };
+    let section_node = Node {
+        node_type: NodeType::Element(ElementData {
+            tag_name: "section".into(),
+            attributes: HashMap::new(),
+        }),
+        children: vec![span_node],
+    };
+    let div_node = Node {
+        node_type: NodeType::Element(ElementData {
+            tag_name: "div".into(),
+            attributes: HashMap::new(),
+        }),
+        children: vec![section_node],
+    };
+
+    let styled = style_tree(&div_node, &css);
+    // styled.children[0] = section, styled.children[0].children[0] = span
+    let span_styled = &styled.children[0].children[0];
+    assert_eq!(
+        span_styled.properties.get("color"),
+        Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+        "div span selector must match span nested inside section inside div"
+    );
+}
+
+#[test]
+fn test_descendant_matching_deep_dom_no_stack_overflow() {
+    // 5-level selector against 30-deep DOM — must complete without stack overflow
+    use feather::engine::css::CssParser;
+    use feather::engine::dom::{ElementData, Node, NodeType};
+    use feather::engine::style::style_tree;
+    use std::collections::HashMap;
+
+    let css = CssParser::parse("div div div div div span { color: blue }");
+
+    fn make_chain(depth: usize) -> Node {
+        if depth == 0 {
+            return Node {
+                node_type: NodeType::Element(ElementData {
+                    tag_name: "span".into(),
+                    attributes: HashMap::new(),
+                }),
+                children: vec![],
+            };
+        }
+        Node {
+            node_type: NodeType::Element(ElementData {
+                tag_name: "div".into(),
+                attributes: HashMap::new(),
+            }),
+            children: vec![make_chain(depth - 1)],
+        }
+    }
+
+    let dom = make_chain(30);
+    let _ = style_tree(&dom, &css); // must not panic or overflow
+}
+
+#[test]
+fn test_mixed_child_descendant_backtracks_to_outer_ancestor() {
+    // "p > a b" must match <b> under <p><a><x><a><b>: the nearest <a> has no
+    // <p> parent, but the outer <a> does. A greedy nearest-match walk misses this.
+    use feather::engine::css::{CssColor, CssParser, Value};
+    use feather::engine::dom::{ElementData, Node, NodeType};
+    use feather::engine::style::style_tree;
+    use std::collections::HashMap;
+
+    fn el(tag: &str, children: Vec<Node>) -> Node {
+        Node {
+            node_type: NodeType::Element(ElementData {
+                tag_name: tag.into(),
+                attributes: HashMap::new(),
+            }),
+            children,
+        }
+    }
+
+    let css = CssParser::parse("p > a b { color: red }");
+    let dom = el("p", vec![el("a", vec![el("x", vec![el("a", vec![el("b", vec![])])])])]);
+    let styled = style_tree(&dom, &css);
+    // styled: p -> a -> x -> a -> b
+    let b_styled = &styled.children[0].children[0].children[0].children[0];
+    assert_eq!(
+        b_styled.properties.get("color"),
+        Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+        "p > a b must match b whose outer a is a direct child of p"
+    );
+}
