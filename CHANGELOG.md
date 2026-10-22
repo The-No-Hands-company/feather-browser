@@ -8,6 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.9] — 2026-10-22
+
+### Added
+- `display: none` layout tests (2): hidden element produces no layout box; hidden div with children leaves the tree empty
+- `overflow: hidden` render clipping: children whose entire border-box lies fully outside the parent's border-box are skipped in both `render_box` (feather-renderer) and `render_box_plain` paths
+- `test_display_none_produces_no_pixels`: render test verifying zero red pixels when top-level element is `display:none`
+- `test_overflow_hidden_skips_fully_outside_child`: render test verifying zero red pixels when child is fully below a zero-height `overflow:hidden` parent
+
+### Known Limitations
+- `overflow: hidden` clips only fully-outside children; partially-overlapping children are still painted (scissor/clip-path not yet implemented)
+
 ## [0.2.8] — 2026-10-22
 
 ### Added
