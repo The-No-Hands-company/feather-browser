@@ -30,8 +30,8 @@ The project is in the **0.0.x engine primitive tier**: building the foundational
 
 | Tier | Meaning |
 |------|---------|
-| `0.0.x` | Engine primitives — renderer, layout, CSS properties, font cache, text rendering. **Current tier.** |
-| `0.x.0` | Subsystem milestones — each minor bump completes a major subsystem (networking, JS engine, full CSS, images, security sandbox, web APIs). |
+| `0.1.x` / `0.2.x` | Engine primitive patches — renderer, layout, CSS properties, font cache, text rendering. Each `0.x.y` patch is one engine primitive iteration. **Current: 0.2.3.** |
+| `0.x.0` (minor bump) | Subsystem milestones — each minor bump completes a major subsystem (networking, JS engine, full CSS, images, security sandbox, web APIs). |
 | `1.0.0` | Complete browser — renders any real website. HTML5, CSS3+, JavaScript, HTTP/HTTPS, security, DOM events. |
 | `2.0.0+` | First new major feature added to the complete browser (e.g. privacy network, sync, extensions). |
 
@@ -43,10 +43,10 @@ The project is in the **0.0.x engine primitive tier**: building the foundational
 |-----------|--------|
 | **0.1.0** — GTK4 shell, tab model, WebKit rendering | ✅ Complete |
 | **0.2.0** — Ad blocker, privacy URL stripping, tab hibernation | ✅ Complete |
-| **0.0.6** — fontdue glyph cache, CPU rasterizer renders real text | ✅ Complete |
-| **0.0.7** — CSS property inheritance, `em` unit resolution in style tree | ✅ Complete |
-| **0.0.8** — `text-align: center/right`, `CssColor` constants, `pen_x` f32 accumulation | ✅ Complete |
-| **0.0.9** — next engine primitive (planned: `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU) | 🔜 Planned |
+| **0.2.1** — fontdue glyph cache, CPU rasterizer renders real text | ✅ Complete |
+| **0.2.2** — CSS property inheritance, `em` unit resolution in style tree | ✅ Complete |
+| **0.2.3** — `text-align: center/right`, `CssColor` constants, `pen_x` f32 accumulation | ✅ Complete |
+| **0.2.4** — next engine primitive (planned: `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU) | 🔜 Planned |
 | **0.3.0** — First browseable pages via FeatherRenderer (networking, scrolling, full inline layout) | 🔜 Planned |
 
 ---
@@ -211,7 +211,7 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 ---
 
-## Known Limitations (engine primitive tier — 0.0.x)
+## Known Limitations (current: 0.2.3)
 
 - **No network loading** — FeatherRenderer cannot fetch and render live URLs yet; networking is a 0.3.0 milestone goal.
 - **No scrolling** — pages taller than the viewport are clipped.
@@ -229,7 +229,7 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 See [CHANGELOG.md](CHANGELOG.md) for what has shipped. Upcoming milestones:
 
-- **0.0.9** — engine primitives: `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU cap
+- **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU cap
 - **0.3.0** — first browseable build: networking, scrolling, full inline layout
 - **0.4.0** — JavaScript runtime integration
 - **0.5.0** — WebKit content filters for full subresource ad/tracker blocking

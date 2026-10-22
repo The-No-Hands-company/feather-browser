@@ -8,7 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
-### Engine primitives in progress (0.0.9)
+### In progress (0.2.4)
 - `text-align` inheritance through the style tree
 - `rem`/`%` font-size → px conversion
 - `<img>` placeholder rendering (grey box with alt-text label)
@@ -16,7 +16,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ---
 
-## [0.0.8] — 2026-10-22
+## [0.2.3] — 2026-10-22
 
 ### Added
 - `CssColor::DARK` constant (`rgb(30, 30, 30)`) in `css.rs` alongside `BLACK`, `WHITE`, `TRANSPARENT`
@@ -35,7 +35,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ---
 
-## [0.0.7] — 2026-10-22
+## [0.2.2] — 2026-10-22
 
 ### Added
 - CSS property inheritance: `color`, `font-size`, `font-family`, `text-align`, `line-height`, `font-weight`, `font-style` propagate from parent to child nodes in the style tree
@@ -47,7 +47,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ---
 
-## [0.0.6] — 2026-10-22
+## [0.2.1] — 2026-10-22
 
 ### Added
 - `font.rs` — three-level glyph cache: per-size `fontdue::Font` instances, rasterized `GlyphBitmap` per `(char, px_size)`, `rasterize_cached()` API
@@ -74,7 +74,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 - **Ad blocker** — hosts-format blocklist, subdomain-aware (`stats.doubleclick.net` → blocks `doubleclick.net`), auto-seeded default list on first run
 - **Privacy URL stripping** — removes `utm_*` (all variants by prefix), `fbclid`, `gclid`, `msclkid`, `dclid`, `twclid`, `mc_cid`, `mc_eid`, `_ga`, `_gl`, `igshid` before every navigation
 - **Tab hibernation** — idle tabs suspended after configurable delay (`auto_hibernate_delay_secs`), renderer freed via `PageRenderer::suspend()`
-- **FeatherRenderer stub** — `feather-renderer` Cargo feature compiles, ready for v0.3 engine implementation
+- **FeatherRenderer stub** — `feather-renderer` Cargo feature compiles, ready for engine implementation
 - Shield (ad block) and freeze (hibernation) toggles in the toolbar
 
 ### Fixed
@@ -105,6 +105,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ---
 
-[Unreleased]: https://github.com/The-No-Hands-company/feather-browser/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/The-No-Hands-company/feather-browser/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/The-No-Hands-company/feather-browser/compare/v0.2.2...v0.2.3
+[0.2.2]: https://github.com/The-No-Hands-company/feather-browser/compare/v0.2.1...v0.2.2
+[0.2.1]: https://github.com/The-No-Hands-company/feather-browser/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/The-No-Hands-company/feather-browser/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/The-No-Hands-company/feather-browser/releases/tag/v0.1.0
