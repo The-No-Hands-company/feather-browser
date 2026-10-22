@@ -7,8 +7,12 @@ mod inner {
     use std::sync::{Arc, OnceLock};
 
     const FONT_BYTES: &[u8] = include_bytes!("../../assets/NotoSans-Regular.ttf");
+    const BOLD_FONT_BYTES: &[u8] = include_bytes!("../../assets/NotoSans-Bold.ttf");
+    const ITALIC_FONT_BYTES: &[u8] = include_bytes!("../../assets/NotoSans-Italic.ttf");
 
     static PARSED_FONT: OnceLock<Arc<Font>> = OnceLock::new();
+    static PARSED_BOLD_FONT: OnceLock<Arc<Font>> = OnceLock::new();
+    static PARSED_ITALIC_FONT: OnceLock<Arc<Font>> = OnceLock::new();
 
     /// Maximum glyph bitmaps held per thread; the cache is cleared when full.
     const GLYPH_CACHE_CAP: usize = 512;
@@ -24,8 +28,30 @@ mod inner {
             .clone()
     }
 
+    fn shared_bold_font() -> Arc<Font> {
+        PARSED_BOLD_FONT
+            .get_or_init(|| {
+                Arc::new(
+                    Font::from_bytes(BOLD_FONT_BYTES, FontSettings::default())
+                        .expect("embedded NotoSans-Bold font bytes are valid"),
+                )
+            })
+            .clone()
+    }
+
+    fn shared_italic_font() -> Arc<Font> {
+        PARSED_ITALIC_FONT
+            .get_or_init(|| {
+                Arc::new(
+                    Font::from_bytes(ITALIC_FONT_BYTES, FontSettings::default())
+                        .expect("embedded NotoSans-Italic font bytes are valid"),
+                )
+            })
+            .clone()
+    }
+
     thread_local! {
-        static METRICS_CACHE: RefCell<HashMap<u32, FontMetrics>> =
+        static METRICS_CACHE: RefCell<HashMap<u64, FontMetrics>> =
             RefCell::new(HashMap::new());
     }
 
@@ -50,17 +76,27 @@ mod inner {
         pub descent: f32,
         pub line_height: f32,
         pub space_advance: f32,
+        pub is_bold: bool,
+        pub is_italic: bool,
         font: Arc<Font>,
     }
 
     impl FontMetrics {
         pub fn load(size: f32) -> Self {
+            Self::load_variant(size, false, false)
+        }
+
+        pub fn load_variant(size: f32, bold: bool, italic: bool) -> Self {
             let size = if !size.is_finite() || size <= 0.0 {
                 16.0
             } else {
                 size.clamp(1.0, 512.0)
             };
-            let font = shared_font();
+            let font = match (bold, italic) {
+                (true, _) => shared_bold_font(),
+                (false, true) => shared_italic_font(),
+                _ => shared_font(),
+            };
             let lm = font
                 .horizontal_line_metrics(size)
                 .unwrap_or(fontdue::LineMetrics {
@@ -80,17 +116,24 @@ mod inner {
                 descent,
                 line_height,
                 space_advance,
+                is_bold: bold,
+                is_italic: italic,
             }
         }
 
         pub fn load_cached(size: f32) -> Self {
-            let key = size.to_bits();
+            Self::load_cached_variant(size, false, false)
+        }
+
+        pub fn load_cached_variant(size: f32, bold: bool, italic: bool) -> Self {
+            let variant_bits: u64 = (bold as u64) | ((italic as u64) << 1);
+            let key: u64 = (size.to_bits() as u64) | (variant_bits << 32);
             METRICS_CACHE.with(|cache| {
                 let mut map = cache.borrow_mut();
                 if let Some(fm) = map.get(&key) {
                     return fm.clone();
                 }
-                let fm = FontMetrics::load(size);
+                let fm = FontMetrics::load_variant(size, bold, italic);
                 map.insert(key, fm.clone());
                 fm
             })
@@ -118,7 +161,9 @@ mod inner {
         }
 
         pub fn rasterize_cached(&self, ch: char) -> Arc<GlyphBitmap> {
-            let key = (ch as u64) << 32 | self.size.to_bits() as u64;
+            // bits 63-34: char, bits 33-32: variant (bold|italic), bits 31-0: size bits
+            let variant: u64 = (self.is_bold as u64) | ((self.is_italic as u64) << 1);
+            let key = (ch as u64) << 34 | (variant << 32) | (self.size.to_bits() as u64);
             GLYPH_CACHE.with(|cache| {
                 let mut map = cache.borrow_mut();
                 if let Some(g) = map.get(&key) {

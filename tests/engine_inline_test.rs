@@ -9,6 +9,8 @@ mod inline_tests {
             text: s.to_string(),
             color: CssColor::BLACK,
             font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
         }
     }
 

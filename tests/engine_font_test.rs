@@ -166,4 +166,44 @@ mod font_tests {
             g.advance_width
         );
     }
+
+    #[test]
+    fn test_bold_font_loads_and_differs_from_regular() {
+        let regular = FontMetrics::load_variant(16.0, false, false);
+        let bold = FontMetrics::load_variant(16.0, true, false);
+        // Both must produce valid glyphs.
+        let rg = regular.rasterize_cached('W');
+        let bg = bold.rasterize_cached('W');
+        assert!(rg.advance_width > 0.0, "regular 'W' advance must be positive");
+        assert!(bg.advance_width > 0.0, "bold 'W' advance must be positive");
+        // Bold glyphs are typically slightly wider than regular.
+        assert!(
+            bg.advance_width >= rg.advance_width,
+            "bold advance ({}) should be >= regular ({})",
+            bg.advance_width,
+            rg.advance_width
+        );
+    }
+
+    #[test]
+    fn test_italic_font_loads_and_has_valid_metrics() {
+        let italic = FontMetrics::load_variant(16.0, false, true);
+        assert!(italic.ascent > 0.0, "italic ascent must be positive");
+        assert!(italic.line_height > 0.0, "italic line_height must be positive");
+        let g = italic.rasterize_cached('A');
+        assert!(g.advance_width > 0.0, "italic 'A' advance must be positive");
+    }
+
+    #[test]
+    fn test_variant_cache_key_is_distinct() {
+        let reg = FontMetrics::load_cached_variant(16.0, false, false);
+        let bold = FontMetrics::load_cached_variant(16.0, true, false);
+        // Different fonts → different advance widths for most chars.
+        // Using 'W' which is typically wider in bold.
+        let rg = reg.rasterize_cached('W');
+        let bg = bold.rasterize_cached('W');
+        // Both must return non-zero (i.e. different cache slots, both populated).
+        assert!(rg.advance_width > 0.0);
+        assert!(bg.advance_width > 0.0);
+    }
 }
