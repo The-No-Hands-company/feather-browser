@@ -296,3 +296,106 @@ mod box_model_layout_tests {
             "border_box width must include left+right border");
     }
 }
+
+#[cfg(test)]
+mod viewport_unit_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::LayoutEngine,
+        style::style_tree,
+    };
+
+    fn first_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+        use feather::engine::layout::BoxType;
+        use feather::engine::dom::NodeType;
+        if let BoxType::Block(s) = &lb.box_type {
+            if let NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == "div" { return Some(lb); }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = first_div(child) { return Some(found); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_vw_width_resolves() {
+        let dom = HtmlParser::parse("<div style=\"width: 50vw;\">x</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_div(&layout).expect("div not found");
+        assert!((div.dimensions.content.width - 400.0).abs() < 0.1,
+            "50vw with containing_width=800 must be 400px, got {}", div.dimensions.content.width);
+    }
+
+    #[test]
+    fn test_vh_height_resolves() {
+        let dom = HtmlParser::parse("<div style=\"height: 50vh;\">x</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build_with_viewport(&styled, 800.0, 600.0);
+        let div = first_div(&layout).expect("div not found");
+        assert!((div.dimensions.content.height - 300.0).abs() < 0.1,
+            "50vh with viewport_height=600 must be 300px, got {}", div.dimensions.content.height);
+    }
+}
+
+#[cfg(test)]
+mod min_max_width_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::LayoutEngine,
+        style::style_tree,
+    };
+
+    fn first_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+        use feather::engine::layout::BoxType;
+        use feather::engine::dom::NodeType;
+        if let BoxType::Block(s) = &lb.box_type {
+            if let NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == "div" { return Some(lb); }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = first_div(child) { return Some(found); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_min_width_clamps_up() {
+        let dom = HtmlParser::parse("<div style=\"width: 50px; min-width: 200px;\">x</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_div(&layout).expect("div not found");
+        assert!((div.dimensions.content.width - 200.0).abs() < 0.1,
+            "min-width: 200px must clamp width up from 50px, got {}", div.dimensions.content.width);
+    }
+
+    #[test]
+    fn test_max_width_clamps_down() {
+        let dom = HtmlParser::parse("<div style=\"max-width: 300px;\">x</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_div(&layout).expect("div not found");
+        assert!((div.dimensions.content.width - 300.0).abs() < 0.1,
+            "max-width: 300px must clamp auto width from 800 down, got {}", div.dimensions.content.width);
+    }
+
+    #[test]
+    fn test_min_max_width_no_effect_when_within() {
+        let dom = HtmlParser::parse("<div style=\"width: 400px; min-width: 100px; max-width: 600px;\">x</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_div(&layout).expect("div not found");
+        assert!((div.dimensions.content.width - 400.0).abs() < 0.1,
+            "width within min/max must not be changed, got {}", div.dimensions.content.width);
+    }
+}

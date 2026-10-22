@@ -9,6 +9,8 @@ pub enum Unit {
     Em,
     Rem,
     Percent,
+    Vw,
+    Vh,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -303,6 +305,12 @@ impl CssParser {
         }
         if let Some(rest) = s.strip_suffix('%') {
             if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Percent); }
+        }
+        if let Some(rest) = s.strip_suffix("vw") {
+            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Vw); }
+        }
+        if let Some(rest) = s.strip_suffix("vh") {
+            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Vh); }
         }
         // bare number
         if let Ok(n) = s.parse::<f32>() { return Value::Number(n); }
