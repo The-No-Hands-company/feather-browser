@@ -226,13 +226,11 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 ## Roadmap
 
-See [CHANGELOG.md](CHANGELOG.md) for what has shipped. Upcoming milestones:
+See [CHANGELOG.md](CHANGELOG.md) for what has shipped and [docs/ROADMAP.md](docs/ROADMAP.md) for the full path to 1.0.
 
-- **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache flush-on-overflow cap ✅
-- **0.3.0** — first browseable build: networking, scrolling, full inline layout
-- **0.4.0** — JavaScript runtime integration
-- **0.5.0** — WebKit content filters for full subresource ad/tracker blocking
-- **1.0.0** — complete browser: renders any website, HTML5 + CSS3 + JS, HTTP/HTTPS, security sandbox
+**Next up (0.2.x engine primitives):** box model → CSS selectors → background-color → shorthands → viewport units  
+**Milestone 0.3.0:** first browseable pages (HTTP/HTTPS fetch, full word-wrap, scrolling)  
+**Milestone 1.0.0:** complete browser — renders any real website
 
 ---
 
