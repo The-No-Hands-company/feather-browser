@@ -8,6 +8,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-22
+
+### Milestone — First Browseable Pages
+
+The FeatherRenderer pipeline is now fully wired: a URL typed in the address bar is fetched
+asynchronously, parsed, styled, laid out, and painted to the GTK4 DrawingArea without blocking
+the UI thread. Pages taller than the viewport are scrollable with the mouse wheel or touchpad.
+
+### Added
+- **Async fetch pipeline** — `glib::ThreadPool::push_future` runs the blocking `network::fetch_page`
+  off the GTK main thread; result is shipped back via `glib::MainContext::spawn_local`
+- **Vertical scrolling** — `EventControllerScroll` tracks `scroll_offset`; re-renders on each tick
+  and clamps to `(doc_height − viewport_height).max(0)` so over-scrolling is impossible
+- **Word-wrap** — `InlineFormattingContext::layout` splits each text run into words and wraps at the
+  available-width boundary; `text-align: left/center/right` applied per line
+- **UA stylesheet** — `head`, `style`, `script`, `title` default to `display: none` so page chrome
+  never leaks into the visible content area
+- **Layout tree stored in `Inner`** — `layout_root: Option<LayoutBox>` retained so scroll
+  re-renders do not re-parse the DOM
+- **Error pages** — failed fetches render a minimal HTML error page rather than leaving the
+  drawing area blank
+
 ## [0.2.9] — 2026-10-22
 
 ### Added
