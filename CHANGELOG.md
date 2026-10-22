@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.6] — 2026-10-22
+
+### Added
+- CSS selector tests: class (`.foo`), id (`#bar`), descendant (`div p`), child (`div > p`) — 4 new tests in `engine_style_test.rs`
+
 ## [0.2.5] — 2026-10-22
 
 ### Added
