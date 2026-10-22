@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use crate::engine::css::{Combinator, PropertyMap, Rule, Selector, Stylesheet};
+use crate::engine::css::{Combinator, PropertyMap, Rule, Selector, Stylesheet, Unit, Value};
 use crate::engine::dom::{ElementData, Node, NodeType};
 
 #[derive(Debug, Clone)]
@@ -10,7 +10,7 @@ pub struct StyledNode {
 }
 
 pub fn style_tree(root: &Node, stylesheet: &Stylesheet) -> StyledNode {
-    style_tree_depth(root, stylesheet, 0, &mut Vec::new())
+    style_tree_depth(root, stylesheet, 0, &mut Vec::new(), &PropertyMap::new())
 }
 
 fn style_tree_depth(
@@ -18,14 +18,34 @@ fn style_tree_depth(
     stylesheet: &Stylesheet,
     depth: usize,
     ancestors: &mut Vec<ElementData>,
+    parent_props: &PropertyMap,
 ) -> StyledNode {
     if depth >= 512 {
         return StyledNode { node: root.clone(), properties: PropertyMap::new(), children: Vec::new() };
     }
-    let properties = match &root.node_type {
+    let mut properties = match &root.node_type {
         NodeType::Element(data) => specified_values(data, stylesheet, ancestors),
         _ => PropertyMap::new(),
     };
+
+    // Inherit inheritable properties from parent when not explicitly set.
+    const INHERITABLE: &[&str] = &["color", "font-size"];
+    for prop in INHERITABLE {
+        if !properties.contains_key(*prop) {
+            if let Some(v) = parent_props.get(*prop) {
+                properties.insert(prop.to_string(), v.clone());
+            }
+        }
+    }
+
+    // Resolve em units: font-size: Nem -> N * parent_px.
+    if let Some(Value::Length(n, Unit::Em)) = properties.get("font-size").cloned() {
+        let parent_px = match parent_props.get("font-size") {
+            Some(Value::Length(px, Unit::Px)) => *px,
+            _ => 16.0,
+        };
+        properties.insert("font-size".to_string(), Value::Length(n * parent_px, Unit::Px));
+    }
     let pushed = if let NodeType::Element(data) = &root.node_type {
         ancestors.push(data.clone());
         true
@@ -34,7 +54,7 @@ fn style_tree_depth(
     };
     let mut children = Vec::new();
     for c in &root.children {
-        children.push(style_tree_depth(c, stylesheet, depth + 1, ancestors));
+        children.push(style_tree_depth(c, stylesheet, depth + 1, ancestors, &properties));
     }
     if pushed { ancestors.pop(); }
     StyledNode { node: root.clone(), properties, children }
