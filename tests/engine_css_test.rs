@@ -151,6 +151,39 @@ mod renderer_tests {
     }
 
     #[test]
+    fn test_padding_shorthand_1_value() {
+        let sheet = CssParser::parse("p { padding: 8px }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(decls.get("padding-top"), Some(&Value::Length(8.0, Unit::Px)));
+        assert_eq!(decls.get("padding-right"), Some(&Value::Length(8.0, Unit::Px)));
+        assert_eq!(decls.get("padding-bottom"), Some(&Value::Length(8.0, Unit::Px)));
+        assert_eq!(decls.get("padding-left"), Some(&Value::Length(8.0, Unit::Px)));
+    }
+
+    #[test]
+    fn test_padding_shorthand_2_values() {
+        let sheet = CssParser::parse("p { padding: 5px 10px }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(decls.get("padding-top"), Some(&Value::Length(5.0, Unit::Px)));
+        assert_eq!(decls.get("padding-right"), Some(&Value::Length(10.0, Unit::Px)));
+        assert_eq!(decls.get("padding-bottom"), Some(&Value::Length(5.0, Unit::Px)));
+        assert_eq!(decls.get("padding-left"), Some(&Value::Length(10.0, Unit::Px)));
+    }
+
+    #[test]
+    fn test_padding_shorthand_3_values() {
+        let sheet = CssParser::parse("p { padding: 2px 4px 6px }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(decls.get("padding-top"), Some(&Value::Length(2.0, Unit::Px)));
+        assert_eq!(decls.get("padding-right"), Some(&Value::Length(4.0, Unit::Px)));
+        assert_eq!(decls.get("padding-bottom"), Some(&Value::Length(6.0, Unit::Px)));
+        assert_eq!(decls.get("padding-left"), Some(&Value::Length(4.0, Unit::Px)));
+    }
+
+    #[test]
     fn test_font_shorthand_extracts_size() {
         let sheet = CssParser::parse("p { font: bold 18px sans-serif }");
         let decls: std::collections::HashMap<_, _> =

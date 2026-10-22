@@ -320,6 +320,34 @@ mod box_model_layout_tests {
     }
 
     #[test]
+    fn test_padding_4_value_shorthand_in_layout() {
+        let dom =
+            HtmlParser::parse(r#"<div style="padding: 10px 20px 30px 40px;">x</div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box");
+        assert_eq!(div.dimensions.padding.top, 10.0);
+        assert_eq!(div.dimensions.padding.right, 20.0);
+        assert_eq!(div.dimensions.padding.bottom, 30.0);
+        assert_eq!(div.dimensions.padding.left, 40.0);
+    }
+
+    #[test]
+    fn test_padding_2_value_shorthand_in_layout() {
+        // 2-value: top/bottom = first, left/right = second
+        let dom = HtmlParser::parse(r#"<div style="padding: 5px 15px;">x</div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box");
+        assert_eq!(div.dimensions.padding.top, 5.0);
+        assert_eq!(div.dimensions.padding.right, 15.0);
+        assert_eq!(div.dimensions.padding.bottom, 5.0);
+        assert_eq!(div.dimensions.padding.left, 15.0);
+    }
+
+    #[test]
     fn test_margin_sets_on_box() {
         let dom = HtmlParser::parse("<div style=\"margin: 5px;\">hello</div>");
         let sheet = CssParser::parse("");

@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-22
+
+### Added
+- `padding` shorthand fully covered by tests: 1-value (all sides equal),
+  2-value (top/bottom, left/right), 3-value (top, left/right, bottom),
+  4-value (top, right, bottom, left — already tested in CSS layer since v0.2.5)
+- New CSS parser tests: `test_padding_shorthand_1_value`,
+  `test_padding_shorthand_2_values`, `test_padding_shorthand_3_values`
+- New layout tests: `test_padding_4_value_shorthand_in_layout`,
+  `test_padding_2_value_shorthand_in_layout` — verify shorthand values
+  arrive in `LayoutBox::dimensions.padding.*` through the full style + layout pipeline
+
 ## [0.3.1] — 2026-10-22
 
 ### Added
