@@ -217,8 +217,8 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 - **No scrolling** — pages taller than the viewport are clipped.
 - **Inline layout is partial** — `InlineFormattingContext` handles `text-align` left/center/right, but floats, flexbox, and grid are not implemented.
 - **`text-align` is not inherited** — must be set explicitly on each element; inheritance is deferred to 0.0.9.
-- **No `rem` or `%` font-size** — `em` resolves correctly; `rem` falls back to 16 px base; `%` not yet converted.
-- **Glyph cache is unbounded** — no LRU cap; long-running sessions accumulate glyphs. Planned fix in 0.0.9.
+- **`rem` uses a fixed 16 px base** — `rem` and `%` font-size units now resolve to px, but `rem` always uses 16 px (the CSS spec default) because root font-size tracking is not yet implemented.
+- **Glyph cache flushes at 512 entries** — unbounded growth is capped; a full flush-on-overflow replaces an LRU eviction policy (no new dependencies). Typical pages stay well under 512 entries.
 - **CSS coverage is limited** — shorthand properties (`margin`, `padding`, `border`), pseudo-classes, and most selectors beyond tag/class/id are not yet parsed.
 - **Ad blocker blocks navigation-level requests only** — subresource blocking requires WebKit content filters, planned for a future release.
 - **Shield and freeze toggles** in the toolbar are visible but not yet wired to runtime behavior.
