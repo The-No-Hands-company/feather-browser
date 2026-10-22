@@ -46,7 +46,7 @@ The project is in the **0.0.x engine primitive tier**: building the foundational
 | **0.2.1** — fontdue glyph cache, CPU rasterizer renders real text | ✅ Complete |
 | **0.2.2** — CSS property inheritance, `em` unit resolution in style tree | ✅ Complete |
 | **0.2.3** — `text-align: center/right`, `CssColor` constants, `pen_x` f32 accumulation | ✅ Complete |
-| **0.2.4** — next engine primitive (planned: `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU) | 🔜 Planned |
+| **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache flush-on-overflow cap | ✅ Complete |
 | **0.3.0** — First browseable pages via FeatherRenderer (networking, scrolling, full inline layout) | 🔜 Planned |
 
 ---
@@ -229,7 +229,7 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 See [CHANGELOG.md](CHANGELOG.md) for what has shipped. Upcoming milestones:
 
-- **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU cap
+- **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache flush-on-overflow cap ✅
 - **0.3.0** — first browseable build: networking, scrolling, full inline layout
 - **0.4.0** — JavaScript runtime integration
 - **0.5.0** — WebKit content filters for full subresource ad/tracker blocking
