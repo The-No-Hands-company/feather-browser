@@ -8,6 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.5] — 2026-10-22
+
+### Added
+- `border` CSS shorthand: `border: 1px solid black` now expands to `border-*-width` (×4) + `border-color`; `border-{side}` one-side shorthand also supported
+- `style=""` inline attribute parsed and applied with correct specificity (overrides any stylesheet rule)
+- Box model end-to-end tests: padding, margin, border, background-color verified through full layout + render pipeline
+
 ## [0.2.4] — 2026-10-22
 
 ### Added

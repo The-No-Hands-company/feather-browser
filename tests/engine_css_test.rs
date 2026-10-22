@@ -304,3 +304,40 @@ fn test_mixed_child_descendant_backtracks_to_outer_ancestor() {
         "p > a b must match b whose outer a is a direct child of p"
     );
 }
+
+#[cfg(test)]
+mod border_shorthand_tests {
+    use feather::engine::css::{CssColor, CssParser, Unit, Value};
+
+    fn parse_decls(css: &str) -> std::collections::HashMap<String, Value> {
+        let sheet = CssParser::parse(css);
+        sheet.rules.into_iter()
+            .flat_map(|r| r.declarations)
+            .collect()
+    }
+
+    #[test]
+    fn test_border_shorthand_expands_width_and_color() {
+        let decls = parse_decls("div { border: 2px solid black; }");
+        assert_eq!(decls.get("border-top-width"),    Some(&Value::Length(2.0, Unit::Px)));
+        assert_eq!(decls.get("border-right-width"),  Some(&Value::Length(2.0, Unit::Px)));
+        assert_eq!(decls.get("border-bottom-width"), Some(&Value::Length(2.0, Unit::Px)));
+        assert_eq!(decls.get("border-left-width"),   Some(&Value::Length(2.0, Unit::Px)));
+        assert_eq!(decls.get("border-color"),        Some(&Value::Color(CssColor::BLACK)));
+    }
+
+    #[test]
+    fn test_border_shorthand_no_color() {
+        let decls = parse_decls("div { border: 3px solid; }");
+        assert_eq!(decls.get("border-top-width"), Some(&Value::Length(3.0, Unit::Px)));
+        assert!(decls.get("border-color").is_none(), "no color in shorthand → no border-color entry");
+    }
+
+    #[test]
+    fn test_border_side_shorthand() {
+        let decls = parse_decls("div { border-left: 1px solid red; }");
+        assert_eq!(decls.get("border-left-width"), Some(&Value::Length(1.0, Unit::Px)));
+        assert_eq!(decls.get("border-color"),      Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })));
+        assert!(decls.get("border-top-width").is_none(), "side shorthand must not set other sides");
+    }
+}

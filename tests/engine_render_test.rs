@@ -225,3 +225,41 @@ fn test_img_placeholder_paints_grey_fill() {
     let has_grey = canvas.pixels.iter().any(|p| p.r == 180 && p.g == 180 && p.b == 180);
     assert!(has_grey, "canvas should contain grey placeholder pixels from the img box");
 }
+
+#[test]
+fn test_background_color_paints_box() {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    let dom = HtmlParser::parse("<div style=\"background-color: red; width: 100px;\">x</div>");
+    let sheet = CssParser::parse("");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build(&styled, 800.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 200.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+    let has_red = canvas.pixels.iter().any(|p| p.r == 255 && p.g == 0 && p.b == 0);
+    assert!(has_red, "canvas must contain a red pixel from background-color: red");
+}
+
+#[test]
+fn test_border_color_paints_edge() {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    let dom = HtmlParser::parse("<div style=\"border: 4px solid blue; background-color: white; width: 100px;\">x</div>");
+    let sheet = CssParser::parse("");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build(&styled, 800.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 200.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+    let has_blue = canvas.pixels.iter().any(|p| p.b == 255 && p.r == 0 && p.g == 0);
+    assert!(has_blue, "canvas must contain a blue pixel from the border");
+}

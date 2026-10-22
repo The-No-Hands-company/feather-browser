@@ -126,6 +126,12 @@ impl CssParser {
         Stylesheet { rules }
     }
 
+    /// Parses a bare declaration list, as found in an element's `style` attribute.
+    pub fn parse_inline_declarations(raw: &str) -> Vec<Declaration> {
+        let mut p = CssParser { pos: 0, input: raw.chars().collect() };
+        p.parse_declarations()
+    }
+
     fn parse_rules(&mut self) -> Vec<Rule> {
         let mut rules = Vec::new();
         loop {
@@ -343,6 +349,35 @@ fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
             expand_box_model("border", &values)
         }
         "font" => expand_font_shorthand(raw),
+        "border" | "border-top" | "border-right" | "border-bottom" | "border-left" => {
+            let mut decls = Vec::new();
+            let sides: &[&str] = match prop {
+                "border-top"    => &["top"],
+                "border-right"  => &["right"],
+                "border-bottom" => &["bottom"],
+                "border-left"   => &["left"],
+                _               => &["top", "right", "bottom", "left"],
+            };
+            let mut width: Option<Value> = None;
+            let mut color: Option<Value> = None;
+            for part in raw.split_whitespace() {
+                let v = CssParser::parse_value(part);
+                match &v {
+                    Value::Length(_, _) if width.is_none() => width = Some(v),
+                    Value::Color(_)                        => color = Some(v),
+                    _ => {}
+                }
+            }
+            if let Some(w) = width {
+                for side in sides {
+                    decls.push((format!("border-{}-width", side), w.clone()));
+                }
+            }
+            if let Some(c) = color {
+                decls.push(("border-color".to_string(), c));
+            }
+            decls
+        }
         _ => vec![(prop.to_string(), CssParser::parse_value(raw))],
     }
 }

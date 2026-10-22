@@ -231,3 +231,68 @@ mod img_layout_tests {
         assert_eq!(img.dimensions.content.height, 50.0, "img height defaults to 50 when absent");
     }
 }
+
+#[cfg(test)]
+mod box_model_layout_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::LayoutEngine,
+        style::style_tree,
+    };
+
+    fn first_block_box(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+        use feather::engine::layout::BoxType;
+        use feather::engine::dom::NodeType;
+        if let BoxType::Block(s) = &lb.box_type {
+            if let NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == "div" { return Some(lb); }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = first_block_box(child) { return Some(found); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_padding_expands_box() {
+        let dom = HtmlParser::parse("<div style=\"padding: 10px;\">hello</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box not found");
+        // content.x starts after left padding (10px offset from containing content.x)
+        assert!(div.dimensions.padding.left >= 10.0, "padding.left must be 10");
+        assert!(div.dimensions.padding.right >= 10.0, "padding.right must be 10");
+        // border_box is content + padding on all sides
+        let bb = div.dimensions.border_box();
+        assert!(bb.width >= div.dimensions.content.width + 20.0 - 0.01,
+            "border_box width must include left+right padding");
+    }
+
+    #[test]
+    fn test_margin_sets_on_box() {
+        let dom = HtmlParser::parse("<div style=\"margin: 5px;\">hello</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box not found");
+        assert!(div.dimensions.margin.top >= 5.0, "margin.top must be 5");
+        assert!(div.dimensions.margin.left >= 5.0, "margin.left must be 5");
+    }
+
+    #[test]
+    fn test_border_width_in_layout() {
+        let dom = HtmlParser::parse("<div style=\"border: 4px solid black;\">hello</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box not found");
+        assert_eq!(div.dimensions.border.left, 4.0, "border.left must be 4");
+        assert_eq!(div.dimensions.border.right, 4.0, "border.right must be 4");
+        let bb = div.dimensions.border_box();
+        assert!(bb.width >= div.dimensions.content.width + 8.0 - 0.01,
+            "border_box width must include left+right border");
+    }
+}
