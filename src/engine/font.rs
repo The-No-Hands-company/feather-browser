@@ -10,6 +10,9 @@ mod inner {
 
     static PARSED_FONT: OnceLock<Arc<Font>> = OnceLock::new();
 
+    /// Maximum glyph bitmaps held per thread; the cache is cleared when full.
+    const GLYPH_CACHE_CAP: usize = 512;
+
     fn shared_font() -> Arc<Font> {
         PARSED_FONT
             .get_or_init(|| {
@@ -109,6 +112,9 @@ mod inner {
                 let mut map = cache.borrow_mut();
                 if let Some(g) = map.get(&key) {
                     return g.clone();
+                }
+                if map.len() >= GLYPH_CACHE_CAP {
+                    map.clear();
                 }
                 let g = Arc::new(self.rasterize(ch));
                 map.insert(key, g.clone());
