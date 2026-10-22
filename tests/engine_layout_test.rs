@@ -175,3 +175,59 @@ mod layout_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod img_layout_tests {
+    use feather::engine::{
+        css::CssParser,
+        dom::NodeType,
+        html::HtmlParser,
+        layout::{BoxType, LayoutEngine},
+        style::style_tree,
+    };
+
+    fn find_img_box(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+        if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+            if let NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == "img" { return Some(lb); }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = find_img_box(child) { return Some(found); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_img_layout_default_dimensions() {
+        let dom = HtmlParser::parse("<img>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let img = find_img_box(&layout).expect("img box not found in layout tree");
+        assert_eq!(img.dimensions.content.width, 100.0, "default img width must be 100");
+        assert_eq!(img.dimensions.content.height, 50.0, "default img height must be 50");
+    }
+
+    #[test]
+    fn test_img_layout_explicit_dimensions() {
+        let dom = HtmlParser::parse("<img width=\"200\" height=\"80\">");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let img = find_img_box(&layout).expect("img box not found in layout tree");
+        assert_eq!(img.dimensions.content.width, 200.0, "img width must read from attribute");
+        assert_eq!(img.dimensions.content.height, 80.0, "img height must read from attribute");
+    }
+
+    #[test]
+    fn test_img_layout_partial_attributes() {
+        let dom = HtmlParser::parse("<img width=\"60\">");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let img = find_img_box(&layout).expect("img box not found in layout tree");
+        assert_eq!(img.dimensions.content.width, 60.0, "img width from attribute");
+        assert_eq!(img.dimensions.content.height, 50.0, "img height defaults to 50 when absent");
+    }
+}

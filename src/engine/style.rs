@@ -29,7 +29,7 @@ fn style_tree_depth(
     };
 
     // Inherit inheritable properties from parent when not explicitly set.
-    const INHERITABLE: &[&str] = &["color", "font-size"];
+    const INHERITABLE: &[&str] = &["color", "font-size", "text-align"];
     for prop in INHERITABLE {
         if !properties.contains_key(*prop) {
             if let Some(v) = parent_props.get(*prop) {
@@ -38,13 +38,25 @@ fn style_tree_depth(
         }
     }
 
-    // Resolve em units: font-size: Nem -> N * parent_px.
+    // Resolve em: font-size: Nem -> N * parent_px.
     if let Some(Value::Length(n, Unit::Em)) = properties.get("font-size").cloned() {
         let parent_px = match parent_props.get("font-size") {
             Some(Value::Length(px, Unit::Px)) => *px,
             _ => 16.0,
         };
         properties.insert("font-size".to_string(), Value::Length(n * parent_px, Unit::Px));
+    }
+    // Resolve rem: font-size: Nrem -> N * 16.0 (CSS spec default root font-size).
+    if let Some(Value::Length(n, Unit::Rem)) = properties.get("font-size").cloned() {
+        properties.insert("font-size".to_string(), Value::Length(n * 16.0, Unit::Px));
+    }
+    // Resolve %: font-size: N% -> N / 100 * parent_px.
+    if let Some(Value::Length(n, Unit::Percent)) = properties.get("font-size").cloned() {
+        let parent_px = match parent_props.get("font-size") {
+            Some(Value::Length(px, Unit::Px)) => *px,
+            _ => 16.0,
+        };
+        properties.insert("font-size".to_string(), Value::Length(n / 100.0 * parent_px, Unit::Px));
     }
     let pushed = if let NodeType::Element(data) = &root.node_type {
         ancestors.push(data.clone());

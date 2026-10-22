@@ -2,6 +2,8 @@
 use crate::engine::css::{CssColor, Value};
 use crate::engine::layout::{BoxType, LayoutBox, Rect};
 #[cfg(feature = "feather-renderer")]
+use crate::engine::dom::NodeType;
+#[cfg(feature = "feather-renderer")]
 use crate::engine::font::{FontMetrics, GlyphBitmap};
 
 /// A software-rendered pixel buffer. Each pixel is RGBA (not pre-multiplied).
@@ -92,6 +94,14 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
     if depth >= 512 { return; }
     render_background_scrolled(canvas, lb, scroll_y);
     render_borders_scrolled(canvas, lb, scroll_y);
+    // img placeholder: paint grey box + alt text, skip normal text render.
+    if is_img_element(lb) {
+        render_img_placeholder(canvas, lb, scroll_y, font);
+        for child in &lb.children {
+            render_box(canvas, child, font, scroll_y, depth + 1);
+        }
+        return;
+    }
     if !lb.line_boxes.is_empty() {
         let origin_x = lb.dimensions.content.x;
         let origin_y = lb.dimensions.content.y - scroll_y;
@@ -208,6 +218,58 @@ fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
     canvas.fill_rect(Rect { x: bb.x, y: bb.y + bb.height - d.border.bottom, width: bb.width, height: d.border.bottom }, color);
     canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: d.border.left, height: bb.height }, color);
     canvas.fill_rect(Rect { x: bb.x + bb.width - d.border.right, y: bb.y, width: d.border.right, height: bb.height }, color);
+}
+
+#[cfg(feature = "feather-renderer")]
+fn is_img_element(lb: &LayoutBox) -> bool {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) => {
+            matches!(&s.node.node_type, NodeType::Element(e) if e.tag_name == "img")
+        }
+        BoxType::Anonymous => false,
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+fn render_img_placeholder(
+    canvas: &mut Canvas,
+    lb: &LayoutBox,
+    scroll_y: f32,
+    font: &FontMetrics,
+) {
+    let c = lb.dimensions.content;
+    let grey = CssColor { r: 180, g: 180, b: 180, a: 255 };
+    let border_col = CssColor { r: 140, g: 140, b: 140, a: 255 };
+    let y = c.y - scroll_y;
+
+    // grey fill
+    canvas.fill_rect(Rect { x: c.x, y, width: c.width, height: c.height }, grey);
+    // 1-px border
+    canvas.fill_rect(Rect { x: c.x, y, width: c.width, height: 1.0 }, border_col);
+    canvas.fill_rect(Rect { x: c.x, y: y + c.height - 1.0, width: c.width, height: 1.0 }, border_col);
+    canvas.fill_rect(Rect { x: c.x, y, width: 1.0, height: c.height }, border_col);
+    canvas.fill_rect(Rect { x: c.x + c.width - 1.0, y, width: 1.0, height: c.height }, border_col);
+
+    // centered alt text
+    if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+        if let NodeType::Element(e) = &s.node.node_type {
+            if let Some(alt) = e.attributes.get("alt") {
+                if !alt.is_empty() {
+                    let fm = FontMetrics::load_cached(12.0);
+                    let text_w = fm.measure_str(alt);
+                    let pen_start_x = c.x + ((c.width - text_w) / 2.0).max(0.0);
+                    let baseline_y = (y + (c.height - fm.line_height) / 2.0 + fm.ascent).round() as i32;
+                    let mut pen_x = pen_start_x;
+                    for ch in alt.chars() {
+                        let glyph = fm.rasterize_cached(ch);
+                        blit_glyph(canvas, &glyph, pen_x.round() as i32, baseline_y, CssColor::DARK);
+                        pen_x += glyph.advance_width;
+                    }
+                }
+            }
+        }
+    }
+    let _ = font; // kept for signature parity with render_box
 }
 
 #[cfg(feature = "feather-renderer")]

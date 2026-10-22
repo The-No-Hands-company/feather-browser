@@ -100,4 +100,69 @@ mod style_tests {
         let _ = div.properties.get("color");
         let _ = div.properties.get("font-size");
     }
+
+    #[test]
+    fn test_text_align_inherited_from_parent() {
+        let dom = HtmlParser::parse("<div><p></p></div>");
+        let sheet = CssParser::parse("div { text-align: center; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        assert_eq!(
+            p.properties.get("text-align"),
+            Some(&Value::Keyword("center".into())),
+            "p should inherit text-align: center from parent div"
+        );
+    }
+
+    #[test]
+    fn test_text_align_child_override_beats_inherited() {
+        let dom = HtmlParser::parse("<div><p></p></div>");
+        let sheet = CssParser::parse("div { text-align: center; } p { text-align: left; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        assert_eq!(
+            p.properties.get("text-align"),
+            Some(&Value::Keyword("left".into())),
+            "p's explicit text-align: left must override inherited center"
+        );
+    }
+
+    #[test]
+    fn test_rem_font_size_resolves_to_px() {
+        let dom = HtmlParser::parse("<p></p>");
+        let sheet = CssParser::parse("p { font-size: 2rem; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        assert_eq!(
+            p.properties.get("font-size"),
+            Some(&Value::Length(32.0, Unit::Px)),
+            "font-size: 2rem must resolve to 32px (2 × 16px default rem base)"
+        );
+    }
+
+    #[test]
+    fn test_percent_font_size_resolves_relative_to_parent() {
+        let dom = HtmlParser::parse("<p></p>");
+        let sheet = CssParser::parse("body { font-size: 20px; } p { font-size: 80%; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        assert_eq!(
+            p.properties.get("font-size"),
+            Some(&Value::Length(16.0, Unit::Px)),
+            "font-size: 80% with parent body 20px must resolve to 16px"
+        );
+    }
+
+    #[test]
+    fn test_percent_font_size_fallback_when_no_parent_px() {
+        let dom = HtmlParser::parse("<p></p>");
+        let sheet = CssParser::parse("p { font-size: 50%; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        assert_eq!(
+            p.properties.get("font-size"),
+            Some(&Value::Length(8.0, Unit::Px)),
+            "font-size: 50% with no parent px must resolve to 8px (50% of 16px base)"
+        );
+    }
 }

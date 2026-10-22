@@ -205,3 +205,23 @@ fn test_pen_advance_f32_accumulation() {
         4 * single_char_px, single_char_px, non_white_cols
     );
 }
+
+#[test]
+fn test_img_placeholder_paints_grey_fill() {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    let dom = HtmlParser::parse("<img width=\"100\" height=\"50\">");
+    let sheet = CssParser::parse("");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build(&styled, 800.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 200.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+    // The img box is painted grey (180,180,180) with a darker border; the canvas must contain grey pixels.
+    let has_grey = canvas.pixels.iter().any(|p| p.r == 180 && p.g == 180 && p.b == 180);
+    assert!(has_grey, "canvas should contain grey placeholder pixels from the img box");
+}

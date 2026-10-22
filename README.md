@@ -46,7 +46,7 @@ The project is in the **0.0.x engine primitive tier**: building the foundational
 | **0.2.1** — fontdue glyph cache, CPU rasterizer renders real text | ✅ Complete |
 | **0.2.2** — CSS property inheritance, `em` unit resolution in style tree | ✅ Complete |
 | **0.2.3** — `text-align: center/right`, `CssColor` constants, `pen_x` f32 accumulation | ✅ Complete |
-| **0.2.4** — next engine primitive (planned: `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU) | 🔜 Planned |
+| **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache flush-on-overflow cap | ✅ Complete |
 | **0.3.0** — First browseable pages via FeatherRenderer (networking, scrolling, full inline layout) | 🔜 Planned |
 
 ---
@@ -211,14 +211,13 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 ---
 
-## Known Limitations (current: 0.2.3)
+## Known Limitations (current: 0.2.4)
 
 - **No network loading** — FeatherRenderer cannot fetch and render live URLs yet; networking is a 0.3.0 milestone goal.
 - **No scrolling** — pages taller than the viewport are clipped.
 - **Inline layout is partial** — `InlineFormattingContext` handles `text-align` left/center/right, but floats, flexbox, and grid are not implemented.
-- **`text-align` is not inherited** — must be set explicitly on each element; inheritance is deferred to 0.0.9.
-- **No `rem` or `%` font-size** — `em` resolves correctly; `rem` falls back to 16 px base; `%` not yet converted.
-- **Glyph cache is unbounded** — no LRU cap; long-running sessions accumulate glyphs. Planned fix in 0.0.9.
+- **`rem` uses a fixed 16 px base** — `rem` and `%` font-size units now resolve to px, but `rem` always uses 16 px (the CSS spec default) because root font-size tracking is not yet implemented.
+- **Glyph cache flushes at 512 entries** — unbounded growth is capped; a full flush-on-overflow replaces an LRU eviction policy (no new dependencies). Typical pages stay well under 512 entries.
 - **CSS coverage is limited** — shorthand properties (`margin`, `padding`, `border`), pseudo-classes, and most selectors beyond tag/class/id are not yet parsed.
 - **Ad blocker blocks navigation-level requests only** — subresource blocking requires WebKit content filters, planned for a future release.
 - **Shield and freeze toggles** in the toolbar are visible but not yet wired to runtime behavior.
@@ -229,7 +228,7 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 See [CHANGELOG.md](CHANGELOG.md) for what has shipped. Upcoming milestones:
 
-- **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU cap
+- **0.2.4** — `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache flush-on-overflow cap ✅
 - **0.3.0** — first browseable build: networking, scrolling, full inline layout
 - **0.4.0** — JavaScript runtime integration
 - **0.5.0** — WebKit content filters for full subresource ad/tracker blocking

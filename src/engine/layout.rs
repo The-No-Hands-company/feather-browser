@@ -341,6 +341,24 @@ fn collect_text_from_layout_children(
 fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
     calculate_block_width(lb, containing);
     calculate_block_position(lb, containing);
+    // <img> elements: set fixed dimensions from HTML attributes, skip child layout.
+    if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+        if let NodeType::Element(e) = &s.node.node_type {
+            if e.tag_name == "img" {
+                let w = e.attributes.get("width")
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .filter(|v| v.is_finite() && *v >= 0.0)
+                    .unwrap_or(100.0);
+                let h = e.attributes.get("height")
+                    .and_then(|v| v.parse::<f32>().ok())
+                    .filter(|v| v.is_finite() && *v >= 0.0)
+                    .unwrap_or(50.0);
+                lb.dimensions.content.width = w;
+                lb.dimensions.content.height = h;
+                return;
+            }
+        }
+    }
     if all_inline_children(&lb.children) {
         let font_size = match &lb.box_type {
             BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("font-size") {

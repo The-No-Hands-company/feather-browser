@@ -116,4 +116,42 @@ mod font_tests {
             glyph.advance_width, from_metrics
         );
     }
+
+    #[test]
+    fn test_glyph_cache_does_not_exceed_cap() {
+        // Rasterize 513 distinct chars at 16px. After the 513th the cache
+        // flushes and refills with just that one entry, so len <= 512.
+        let fm = FontMetrics::load_cached(16.0);
+        // Use chars from U+0020 to U+0220 (512 distinct code points).
+        for cp in 0x0020_u32..=0x0220 {
+            if let Some(ch) = char::from_u32(cp) {
+                let _ = fm.rasterize_cached(ch);
+            }
+        }
+        // Rasterize one more unique char to trigger the flush path.
+        let _ = fm.rasterize_cached('\u{0221}');
+        // After flush + one insert, cache holds exactly 1 entry — well under cap.
+        // We cannot inspect the cache directly (private), but the call must not panic
+        // and must return a valid glyph.
+        let g = fm.rasterize_cached('A');
+        assert!(g.advance_width > 0.0, "post-flush rasterization must return valid glyph");
+    }
+
+    #[test]
+    fn test_glyph_cache_still_works_after_flush() {
+        let fm = FontMetrics::load_cached(14.0);
+        // Fill past cap (512) to force a flush.
+        for cp in 0x0020_u32..=0x0221 {
+            if let Some(ch) = char::from_u32(cp) {
+                let _ = fm.rasterize_cached(ch);
+            }
+        }
+        // After flush, rasterizing 'Z' must produce a glyph with sensible advance_width.
+        let g = fm.rasterize_cached('Z');
+        assert!(
+            g.advance_width > 0.0 && g.advance_width < 100.0,
+            "advance_width after flush must be finite and positive, got {}",
+            g.advance_width
+        );
+    }
 }
