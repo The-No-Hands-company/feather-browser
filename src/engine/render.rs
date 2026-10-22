@@ -121,7 +121,11 @@ fn render_box(
                 continue;
             }
             for item in &line.items {
-                let item_font = crate::engine::font::FontMetrics::load_cached(item.font_size);
+                let item_font = crate::engine::font::FontMetrics::load_cached_variant(
+                    item.font_size,
+                    item.font_bold,
+                    item.font_italic,
+                );
                 let mut pen_x_f: f32 = origin_x + item.x;
                 for ch in item.text.chars() {
                     let glyph = item_font.rasterize_cached(ch);

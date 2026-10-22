@@ -207,6 +207,57 @@ mod renderer_tests {
     }
 
     #[test]
+    fn test_font_weight_bold_keyword() {
+        let sheet = CssParser::parse("p { font-weight: bold }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(
+            decls.get("font-weight"),
+            Some(&Value::Keyword("bold".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_font_weight_normal_keyword() {
+        let sheet = CssParser::parse("p { font-weight: normal }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(
+            decls.get("font-weight"),
+            Some(&Value::Keyword("normal".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_font_style_italic_keyword() {
+        let sheet = CssParser::parse("em { font-style: italic }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(
+            decls.get("font-style"),
+            Some(&Value::Keyword("italic".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_font_weight_bold_inherited() {
+        use feather::engine::html::HtmlParser;
+        // Parent has font-weight:bold; child should inherit it.
+        let dom = HtmlParser::parse(r#"<div style="font-weight: bold;"><span>x</span></div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        // Navigate to body > div > span
+        let body = styled.children.iter().find(|c| c.node.tag_name() == Some("body")).unwrap();
+        let div = body.children.iter().find(|c| c.node.tag_name() == Some("div")).unwrap();
+        let span = div.children.iter().find(|c| c.node.tag_name() == Some("span")).unwrap();
+        assert_eq!(
+            span.properties.get("font-weight"),
+            Some(&Value::Keyword("bold".to_string())),
+            "font-weight must inherit from parent div to child span"
+        );
+    }
+
+    #[test]
     fn test_font_shorthand_extracts_size() {
         let sheet = CssParser::parse("p { font: bold 18px sans-serif }");
         let decls: std::collections::HashMap<_, _> =

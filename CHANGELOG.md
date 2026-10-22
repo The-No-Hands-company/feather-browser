@@ -8,6 +8,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.4] — 2026-10-22
+
+### Added
+- `NotoSans-Bold.ttf` and `NotoSans-Italic.ttf` bundled via `include_bytes!` alongside
+  the existing `NotoSans-Regular.ttf`
+- `FontMetrics::load_variant(size, bold, italic)` and `FontMetrics::load_cached_variant(size, bold, italic)`
+  — select the bold or italic font face; `load(size)` / `load_cached(size)` remain as regular-font wrappers
+- `FontMetrics::is_bold` and `FontMetrics::is_italic` fields; glyph cache key encodes font variant
+  in bits 33-32 so bold and regular glyphs never collide
+- `font-weight` and `font-style` added to `INHERITABLE` in `style.rs` — both properties
+  now cascade from parent to child in the style tree
+- `font_bold: bool` and `font_italic: bool` on `InlineText` and `PlacedInlineItem`; the
+  layout pass reads `font-weight: bold` and `font-style: italic/oblique` from each styled
+  node and threads the flags into the IFC and line boxes
+- render loop uses `load_cached_variant` per `PlacedInlineItem` — pages using bold or italic
+  CSS now paint with the correct font face
+
+### Tests added
+- `test_bold_font_loads_and_differs_from_regular` — bold 'W' advance ≥ regular 'W'
+- `test_italic_font_loads_and_has_valid_metrics` — italic font loads, ascent/glyph sane
+- `test_variant_cache_key_is_distinct` — regular and bold slots are independent in cache
+- `test_font_weight_bold_keyword`, `test_font_weight_normal_keyword` — CSS parser emits correct Value::Keyword
+- `test_font_style_italic_keyword` — CSS parser emits `italic` keyword
+- `test_font_weight_bold_inherited` — `font-weight: bold` on parent div inherits to child span
+
 ## [0.3.3] — 2026-10-22
 
 ### Added

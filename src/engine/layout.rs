@@ -65,6 +65,8 @@ pub struct PlacedInlineItem {
     pub width: f32,
     pub font_size: f32,
     pub color: CssColor,
+    pub font_bold: bool,
+    pub font_italic: bool,
 }
 
 /// One horizontal line in an inline formatting context.
@@ -82,6 +84,8 @@ pub struct InlineText {
     pub text: String,
     pub color: CssColor,
     pub font_size: f32,
+    pub font_bold: bool,
+    pub font_italic: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -154,7 +158,8 @@ impl InlineFormattingContext {
         }
 
         for item in items {
-            let item_font = FontMetrics::load_cached(item.font_size);
+            let item_font =
+                FontMetrics::load_cached_variant(item.font_size, item.font_bold, item.font_italic);
             let words: Vec<&str> = item.text.split_whitespace().collect();
             if words.is_empty() {
                 continue;
@@ -181,6 +186,8 @@ impl InlineFormattingContext {
                     width: w,
                     font_size: item.font_size,
                     color: item.color,
+                    font_bold: item.font_bold,
+                    font_italic: item.font_italic,
                 });
                 cursor_x = x + w;
                 cur_line_height = cur_line_height.max(item_font.line_height);
@@ -330,6 +337,8 @@ fn collect_inline_text(
     children: &[LayoutBox],
     parent_font_size: f32,
     parent_color: CssColor,
+    parent_bold: bool,
+    parent_italic: bool,
 ) -> Vec<InlineText> {
     let mut items = Vec::new();
     for child in children {
@@ -341,6 +350,8 @@ fn collect_inline_text(
                             text: t.clone(),
                             color: parent_color,
                             font_size: parent_font_size,
+                            font_bold: parent_bold,
+                            font_italic: parent_italic,
                         });
                     }
                 }
@@ -354,7 +365,22 @@ fn collect_inline_text(
                     Some(Value::Length(n, Unit::Px)) => *n,
                     _ => 16.0,
                 };
-                collect_text_from_layout_children(&child.children, color, font_size, &mut items);
+                let bold = matches!(
+                    s.properties.get("font-weight"),
+                    Some(Value::Keyword(k)) if k == "bold"
+                );
+                let italic = matches!(
+                    s.properties.get("font-style"),
+                    Some(Value::Keyword(k)) if k == "italic" || k == "oblique"
+                );
+                collect_text_from_layout_children(
+                    &child.children,
+                    color,
+                    font_size,
+                    bold,
+                    italic,
+                    &mut items,
+                );
             }
             BoxType::Block(_) => {}
         }
@@ -366,6 +392,8 @@ fn collect_text_from_layout_children(
     children: &[LayoutBox],
     color: CssColor,
     font_size: f32,
+    font_bold: bool,
+    font_italic: bool,
     out: &mut Vec<InlineText>,
 ) {
     for child in children {
@@ -375,10 +403,12 @@ fn collect_text_from_layout_children(
                     text: t.clone(),
                     color,
                     font_size,
+                    font_bold,
+                    font_italic,
                 });
             }
         }
-        collect_text_from_layout_children(&child.children, color, font_size, out);
+        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, out);
     }
 }
 
@@ -422,7 +452,21 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
             },
             BoxType::Anonymous => CssColor::BLACK,
         };
-        let items = collect_inline_text(&lb.children, font_size, color);
+        let bold = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s) => matches!(
+                s.properties.get("font-weight"),
+                Some(Value::Keyword(k)) if k == "bold"
+            ),
+            BoxType::Anonymous => false,
+        };
+        let italic = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s) => matches!(
+                s.properties.get("font-style"),
+                Some(Value::Keyword(k)) if k == "italic" || k == "oblique"
+            ),
+            BoxType::Anonymous => false,
+        };
+        let items = collect_inline_text(&lb.children, font_size, color, bold, italic);
         if !items.is_empty() {
             let align = match &lb.box_type {
                 BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("text-align") {

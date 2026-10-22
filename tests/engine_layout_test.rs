@@ -97,6 +97,8 @@ mod layout_tests {
             text: "Hi".to_string(),
             color: CssColor::DARK,
             font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -119,6 +121,8 @@ mod layout_tests {
             text: "Hi".to_string(),
             color: CssColor::DARK,
             font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -148,6 +152,8 @@ mod layout_tests {
             text: "Hi".to_string(),
             color: CssColor::DARK,
             font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
