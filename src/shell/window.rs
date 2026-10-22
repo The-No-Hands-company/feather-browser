@@ -33,12 +33,16 @@ impl FeatherWindow {
         // GTK timer fires every 10s to check idle tabs
         let mgr_for_timer = Rc::clone(&tab_manager);
         let hib_mgr = Rc::new(RefCell::new(
-            crate::features::tab_hibernation::HibernationManager::new(settings.auto_hibernate_delay_secs)
+            crate::features::tab_hibernation::HibernationManager::new(
+                settings.auto_hibernate_delay_secs,
+            ),
         ));
         let hib_for_timer = Rc::clone(&hib_mgr);
         glib::timeout_add_seconds_local(10, move || {
             let mut tabs = mgr_for_timer.borrow_mut();
-            hib_for_timer.borrow_mut().check_and_hibernate(tabs.tabs_mut());
+            hib_for_timer
+                .borrow_mut()
+                .check_and_hibernate(tabs.tabs_mut());
             glib::ControlFlow::Continue
         });
 
@@ -57,8 +61,7 @@ impl FeatherWindow {
 
         // Shared holder for the redraw closure.
         // Stored in Rc<RefCell<...>> so callbacks can call back into it after mutations.
-        let redraw_fn: Rc<RefCell<Box<dyn Fn()>>> =
-            Rc::new(RefCell::new(Box::new(|| {})));
+        let redraw_fn: Rc<RefCell<Box<dyn Fn()>>> = Rc::new(RefCell::new(Box::new(|| {})));
 
         // Build the actual redraw closure and install it.
         {
@@ -88,7 +91,9 @@ impl FeatherWindow {
                     let old_id = mgr_c1.borrow().active_tab().map(|t| t.id);
                     {
                         let mut m = mgr_c1.borrow_mut();
-                        hib_c1.borrow_mut().on_tab_switched(old_id, id, m.tabs_mut());
+                        hib_c1
+                            .borrow_mut()
+                            .on_tab_switched(old_id, id, m.tabs_mut());
                         m.switch_to(id);
                     }
                     (rd_c1.borrow())();
@@ -106,7 +111,9 @@ impl FeatherWindow {
                     if let Some(child) = stack_c2.child_by_name(&page_name) {
                         stack_c2.remove(&child);
                     }
-                    { mgr_c2.borrow_mut().remove_tab(id); }
+                    {
+                        mgr_c2.borrow_mut().remove_tab(id);
+                    }
                     (rd_c2.borrow())();
                 };
 
@@ -169,8 +176,7 @@ impl FeatherWindow {
             let renderer: Box<dyn PageRenderer> =
                 Box::new(WebKitRenderer::new(Rc::clone(&adblock_flag)));
             #[cfg(all(feature = "feather-renderer", not(feature = "webkit-renderer")))]
-            let renderer: Box<dyn PageRenderer> =
-                Box::new(crate::bridge::FeatherRenderer::new());
+            let renderer: Box<dyn PageRenderer> = Box::new(crate::bridge::FeatherRenderer::new());
             #[cfg(not(any(feature = "webkit-renderer", feature = "feather-renderer")))]
             let renderer: Box<dyn PageRenderer> =
                 Box::new(crate::bridge::MockRenderer::new(&settings.homepage));
@@ -220,19 +226,25 @@ impl FeatherWindow {
         {
             let mgr = Rc::clone(&tab_manager);
             toolbar.connect_back(move || {
-                if let Some(tab) = mgr.borrow().active_tab() { tab.renderer.go_back(); }
+                if let Some(tab) = mgr.borrow().active_tab() {
+                    tab.renderer.go_back();
+                }
             });
         }
         {
             let mgr = Rc::clone(&tab_manager);
             toolbar.connect_forward(move || {
-                if let Some(tab) = mgr.borrow().active_tab() { tab.renderer.go_forward(); }
+                if let Some(tab) = mgr.borrow().active_tab() {
+                    tab.renderer.go_forward();
+                }
             });
         }
         {
             let mgr = Rc::clone(&tab_manager);
             toolbar.connect_reload(move || {
-                if let Some(tab) = mgr.borrow().active_tab() { tab.renderer.reload(); }
+                if let Some(tab) = mgr.borrow().active_tab() {
+                    tab.renderer.reload();
+                }
             });
         }
 

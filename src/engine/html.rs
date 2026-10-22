@@ -3,8 +3,8 @@ use crate::engine::dom::{Dom, Node};
 use std::collections::HashMap;
 
 const VOID_ELEMENTS: &[&str] = &[
-    "area", "base", "br", "col", "embed", "hr", "img", "input",
-    "link", "meta", "param", "source", "track", "wbr",
+    "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source",
+    "track", "wbr",
 ];
 
 /// Stateless HTML5 parser. The only public entry point is [`HtmlParser::parse`].
@@ -16,7 +16,10 @@ pub struct HtmlParser {
 impl HtmlParser {
     /// Parse an HTML string and return a [`Dom`] rooted at an implicit `<html>` element.
     pub fn parse(html: &str) -> Dom {
-        let mut p = HtmlParser { pos: 0, input: html.chars().collect() };
+        let mut p = HtmlParser {
+            pos: 0,
+            input: html.chars().collect(),
+        };
         let nodes = p.parse_nodes(0, false);
         let root = p.ensure_html_root(nodes);
         Dom::new(root)
@@ -66,14 +69,18 @@ impl HtmlParser {
         let mut nodes = Vec::new();
         loop {
             self.skip_whitespace();
-            if self.eof() { break; }
+            if self.eof() {
+                break;
+            }
             if self.starts_with("</") {
                 if in_element {
                     break; // Normal end-of-children for the enclosing element.
                 } else {
                     // Top-level stale closing tag: consume and continue.
                     self.skip_to('>');
-                    if !self.eof() { self.consume(); }
+                    if !self.eof() {
+                        self.consume();
+                    }
                     continue;
                 }
             }
@@ -110,7 +117,9 @@ impl HtmlParser {
         // Depth cap: avoid stack overflow on pathological input (Fix 1).
         if depth >= 512 {
             self.skip_to('>');
-            if !self.eof() { self.consume(); }
+            if !self.eof() {
+                self.consume();
+            }
             return Node::text(String::new());
         }
 
@@ -239,7 +248,9 @@ impl HtmlParser {
             match s_chars.next() {
                 None => return true,
                 Some(c) => {
-                    if i >= self.input.len() || self.input[i] != c { return false; }
+                    if i >= self.input.len() || self.input[i] != c {
+                        return false;
+                    }
                     i += 1;
                 }
             }

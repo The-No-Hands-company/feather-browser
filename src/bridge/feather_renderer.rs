@@ -111,9 +111,8 @@ impl FeatherRenderer {
         }
 
         {
-            let scroll_ctrl = gtk4::EventControllerScroll::new(
-                gtk4::EventControllerScrollFlags::VERTICAL,
-            );
+            let scroll_ctrl =
+                gtk4::EventControllerScroll::new(gtk4::EventControllerScrollFlags::VERTICAL);
             let inner_scroll = Rc::downgrade(&inner);
             scroll_ctrl.connect_scroll(move |_, _dx, dy| {
                 if let Some(rc) = inner_scroll.upgrade() {
@@ -131,7 +130,8 @@ impl FeatherRenderer {
                             width: w as f32,
                             height: h as f32,
                         };
-                        let canvas = crate::engine::render::Painter::paint(layout_root, viewport, 16.0);
+                        let canvas =
+                            crate::engine::render::Painter::paint(layout_root, viewport, 16.0);
                         s.pixel_buf = Some(crate::engine::render::canvas_to_bgra(&canvas));
                         s.pixel_w = w as u32;
                         s.pixel_h = h as u32;
@@ -173,7 +173,12 @@ impl FeatherRenderer {
             s.layout_root = Some(layout_root.clone());
         }
         let scroll_offset = self.inner.borrow().scroll_offset;
-        let viewport = Rect { x: 0.0, y: scroll_offset, width: w as f32, height: h as f32 };
+        let viewport = Rect {
+            x: 0.0,
+            y: scroll_offset,
+            width: w as f32,
+            height: h as f32,
+        };
         let canvas = Painter::paint(&layout_root, viewport, 16.0);
         let bgra = canvas_to_bgra(&canvas);
 
@@ -188,17 +193,23 @@ impl FeatherRenderer {
         // Take each callback list before invoking to avoid re-entrant borrow panics.
         let url_str = url.to_string();
         let url_cbs = std::mem::take(&mut self.inner.borrow_mut().url_cbs);
-        for cb in &url_cbs { cb(url_str.clone()); }
+        for cb in &url_cbs {
+            cb(url_str.clone());
+        }
         self.inner.borrow_mut().url_cbs = url_cbs;
 
         let title_cbs = std::mem::take(&mut self.inner.borrow_mut().title_cbs);
-        for cb in &title_cbs { cb(title.clone()); }
+        for cb in &title_cbs {
+            cb(title.clone());
+        }
         self.inner.borrow_mut().title_cbs = title_cbs;
 
         self.inner.borrow().drawing_area.queue_draw();
 
         let load_done_cbs = std::mem::take(&mut self.inner.borrow_mut().load_done_cbs);
-        for cb in &load_done_cbs { cb(); }
+        for cb in &load_done_cbs {
+            cb();
+        }
         self.inner.borrow_mut().load_done_cbs = load_done_cbs;
     }
 
@@ -244,7 +255,9 @@ impl FeatherRenderer {
 }
 
 impl Default for FeatherRenderer {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PageRenderer for FeatherRenderer {
@@ -303,7 +316,9 @@ impl PageRenderer for FeatherRenderer {
     fn go_back(&self) {
         let url = {
             let mut s = self.inner.borrow_mut();
-            if s.history_pos == 0 { return; }
+            if s.history_pos == 0 {
+                return;
+            }
             s.history_pos -= 1;
             s.history[s.history_pos].clone()
         };
@@ -313,7 +328,9 @@ impl PageRenderer for FeatherRenderer {
     fn go_forward(&self) {
         let url = {
             let mut s = self.inner.borrow_mut();
-            if s.history_pos + 1 >= s.history.len() { return; }
+            if s.history_pos + 1 >= s.history.len() {
+                return;
+            }
             s.history_pos += 1;
             s.history[s.history_pos].clone()
         };
@@ -322,16 +339,24 @@ impl PageRenderer for FeatherRenderer {
 
     fn reload(&self) {
         let url = self.inner.borrow().url.clone();
-        if !url.is_empty() { self.fetch_and_render_url(url); }
+        if !url.is_empty() {
+            self.fetch_and_render_url(url);
+        }
     }
 
     fn stop(&self) {}
 
-    fn current_url(&self) -> String { self.inner.borrow().url.clone() }
+    fn current_url(&self) -> String {
+        self.inner.borrow().url.clone()
+    }
 
-    fn title(&self) -> String { self.inner.borrow().title.clone() }
+    fn title(&self) -> String {
+        self.inner.borrow().title.clone()
+    }
 
-    fn can_go_back(&self) -> bool { self.inner.borrow().history_pos > 0 }
+    fn can_go_back(&self) -> bool {
+        self.inner.borrow().history_pos > 0
+    }
 
     fn can_go_forward(&self) -> bool {
         let s = self.inner.borrow();
@@ -347,7 +372,9 @@ impl PageRenderer for FeatherRenderer {
     fn suspend(&self) {
         let url = {
             let mut s = self.inner.borrow_mut();
-            if s.suspended_url.is_some() { return; }
+            if s.suspended_url.is_some() {
+                return;
+            }
             let u = s.url.clone();
             s.suspended_url = Some(u.clone());
             s.pixel_buf = None;
@@ -384,14 +411,16 @@ impl PageRenderer for FeatherRenderer {
 /// Fix 4: Escape HTML special characters to prevent injection in error pages.
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
-     .replace('<', "&lt;")
-     .replace('>', "&gt;")
-     .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// Fix 1: depth-capped traversal to avoid stack overflow on deep DOMs.
 fn extract_style_tags(node: &crate::engine::dom::Node, depth: usize) -> String {
-    if depth >= 512 { return String::new(); }
+    if depth >= 512 {
+        return String::new();
+    }
     let mut css = String::new();
     if let NodeType::Element(e) = &node.node_type {
         if e.tag_name == "style" {
@@ -410,17 +439,31 @@ fn extract_style_tags(node: &crate::engine::dom::Node, depth: usize) -> String {
 
 /// Fix 1: depth-capped traversal to avoid stack overflow on deep DOMs.
 fn extract_title(node: &crate::engine::dom::Node, depth: usize) -> Option<String> {
-    if depth >= 512 { return None; }
+    if depth >= 512 {
+        return None;
+    }
     if let NodeType::Element(e) = &node.node_type {
         if e.tag_name == "title" {
-            let text: String = node.children.iter().filter_map(|c| {
-                if let NodeType::Text(t) = &c.node_type { Some(t.clone()) } else { None }
-            }).collect();
-            if !text.is_empty() { return Some(text.trim().to_string()); }
+            let text: String = node
+                .children
+                .iter()
+                .filter_map(|c| {
+                    if let NodeType::Text(t) = &c.node_type {
+                        Some(t.clone())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if !text.is_empty() {
+                return Some(text.trim().to_string());
+            }
         }
     }
     for child in &node.children {
-        if let Some(t) = extract_title(child, depth + 1) { return Some(t); }
+        if let Some(t) = extract_title(child, depth + 1) {
+            return Some(t);
+        }
     }
     None
 }

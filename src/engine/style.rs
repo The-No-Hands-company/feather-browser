@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use crate::engine::css::{Combinator, CssParser, PropertyMap, Rule, Selector, Stylesheet, Unit, Value};
+use crate::engine::css::{
+    Combinator, CssParser, PropertyMap, Rule, Selector, Stylesheet, Unit, Value,
+};
 use crate::engine::dom::{ElementData, Node, NodeType};
 
 #[derive(Debug, Clone)]
@@ -21,7 +23,11 @@ fn style_tree_depth(
     parent_props: &PropertyMap,
 ) -> StyledNode {
     if depth >= 512 {
-        return StyledNode { node: root.clone(), properties: PropertyMap::new(), children: Vec::new() };
+        return StyledNode {
+            node: root.clone(),
+            properties: PropertyMap::new(),
+            children: Vec::new(),
+        };
     }
     let mut properties = match &root.node_type {
         NodeType::Element(data) => specified_values(data, stylesheet, ancestors),
@@ -44,7 +50,10 @@ fn style_tree_depth(
             Some(Value::Length(px, Unit::Px)) => *px,
             _ => 16.0,
         };
-        properties.insert("font-size".to_string(), Value::Length(n * parent_px, Unit::Px));
+        properties.insert(
+            "font-size".to_string(),
+            Value::Length(n * parent_px, Unit::Px),
+        );
     }
     // Resolve rem: font-size: Nrem -> N * 16.0 (CSS spec default root font-size).
     if let Some(Value::Length(n, Unit::Rem)) = properties.get("font-size").cloned() {
@@ -56,7 +65,10 @@ fn style_tree_depth(
             Some(Value::Length(px, Unit::Px)) => *px,
             _ => 16.0,
         };
-        properties.insert("font-size".to_string(), Value::Length(n / 100.0 * parent_px, Unit::Px));
+        properties.insert(
+            "font-size".to_string(),
+            Value::Length(n / 100.0 * parent_px, Unit::Px),
+        );
     }
     let pushed = if let NodeType::Element(data) = &root.node_type {
         ancestors.push(data.clone());
@@ -66,10 +78,22 @@ fn style_tree_depth(
     };
     let mut children = Vec::new();
     for c in &root.children {
-        children.push(style_tree_depth(c, stylesheet, depth + 1, ancestors, &properties));
+        children.push(style_tree_depth(
+            c,
+            stylesheet,
+            depth + 1,
+            ancestors,
+            &properties,
+        ));
     }
-    if pushed { ancestors.pop(); }
-    StyledNode { node: root.clone(), properties, children }
+    if pushed {
+        ancestors.pop();
+    }
+    StyledNode {
+        node: root.clone(),
+        properties,
+        children,
+    }
 }
 
 fn specified_values(
@@ -107,23 +131,33 @@ fn specified_values(
 
 fn simple_matches(elem: &ElementData, sel: &Selector) -> bool {
     if let Some(ref tag) = sel.tag_name {
-        if elem.tag_name != *tag { return false; }
+        if elem.tag_name != *tag {
+            return false;
+        }
     }
     if let Some(ref id) = sel.id {
         if elem.attributes.get("id").map(|s| s.as_str()) != Some(id.as_str()) {
             return false;
         }
     }
-    let class_attr = elem.attributes.get("class").map(|s| s.as_str()).unwrap_or("");
+    let class_attr = elem
+        .attributes
+        .get("class")
+        .map(|s| s.as_str())
+        .unwrap_or("");
     let elem_classes: Vec<&str> = class_attr.split_whitespace().collect();
     for cls in &sel.classes {
-        if !elem_classes.contains(&cls.as_str()) { return false; }
+        if !elem_classes.contains(&cls.as_str()) {
+            return false;
+        }
     }
     true
 }
 
 fn selector_matches(elem: &ElementData, sel: &Selector, ancestors: &[ElementData]) -> bool {
-    if !simple_matches(elem, sel) { return false; }
+    if !simple_matches(elem, sel) {
+        return false;
+    }
 
     // Flatten the ancestor chain, innermost first. tokens[j] is the j-th compound
     // selector above the subject; rels[j] links tokens[j] to the level beneath it
@@ -137,7 +171,9 @@ fn selector_matches(elem: &ElementData, sel: &Selector, ancestors: &[ElementData
         current = parent_sel.as_ref();
     }
     let n = tokens.len();
-    if n == 0 { return true; }
+    if n == 0 {
+        return true;
+    }
 
     // Left-to-right DP over ancestors (outermost first is not needed: we walk
     // from the parent outwards). row[j] records whether tokens[j] can be bound to
@@ -146,7 +182,7 @@ fn selector_matches(elem: &ElementData, sel: &Selector, ancestors: &[ElementData
     // cost at O(depth x chain length) per element.
     let depth = ancestors.len();
     let mut prev = vec![false; n]; // bindings at ancestor index i + 1
-    let mut row = vec![false; n];  // bindings at ancestor index i
+    let mut row = vec![false; n]; // bindings at ancestor index i
     let mut seen = vec![false; n]; // bindings at any ancestor index > i
     for i in (0..depth).rev() {
         for j in 0..n {

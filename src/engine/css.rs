@@ -28,63 +28,318 @@ pub struct CssColor {
 }
 
 impl CssColor {
-    pub const WHITE: CssColor = CssColor { r: 255, g: 255, b: 255, a: 255 };
-    pub const BLACK: CssColor = CssColor { r: 0, g: 0, b: 0, a: 255 };
-    pub const TRANSPARENT: CssColor = CssColor { r: 0, g: 0, b: 0, a: 0 };
-    pub const DARK: CssColor = CssColor { r: 30, g: 30, b: 30, a: 255 };
+    pub const WHITE: CssColor = CssColor {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255,
+    };
+    pub const BLACK: CssColor = CssColor {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
+    pub const TRANSPARENT: CssColor = CssColor {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+    pub const DARK: CssColor = CssColor {
+        r: 30,
+        g: 30,
+        b: 30,
+        a: 255,
+    };
 
     pub fn from_keyword(s: &str) -> Option<Self> {
         match s {
-            "red"     => Some(CssColor { r: 255, g: 0,   b: 0,   a: 255 }),
-            "green"   => Some(CssColor { r: 0,   g: 128, b: 0,   a: 255 }),
-            "blue"    => Some(CssColor { r: 0,   g: 0,   b: 255, a: 255 }),
-            "black"   => Some(CssColor::BLACK),
-            "white"   => Some(CssColor::WHITE),
-            "gray" | "grey" => Some(CssColor { r: 128, g: 128, b: 128, a: 255 }),
-            "yellow"  => Some(CssColor { r: 255, g: 255, b: 0,   a: 255 }),
-            "orange"  => Some(CssColor { r: 255, g: 165, b: 0,   a: 255 }),
-            "purple"  => Some(CssColor { r: 128, g: 0,   b: 128, a: 255 }),
-            "pink"    => Some(CssColor { r: 255, g: 192, b: 203, a: 255 }),
+            "red" => Some(CssColor {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 255,
+            }),
+            "green" => Some(CssColor {
+                r: 0,
+                g: 128,
+                b: 0,
+                a: 255,
+            }),
+            "blue" => Some(CssColor {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255,
+            }),
+            "black" => Some(CssColor::BLACK),
+            "white" => Some(CssColor::WHITE),
+            "gray" | "grey" => Some(CssColor {
+                r: 128,
+                g: 128,
+                b: 128,
+                a: 255,
+            }),
+            "yellow" => Some(CssColor {
+                r: 255,
+                g: 255,
+                b: 0,
+                a: 255,
+            }),
+            "orange" => Some(CssColor {
+                r: 255,
+                g: 165,
+                b: 0,
+                a: 255,
+            }),
+            "purple" => Some(CssColor {
+                r: 128,
+                g: 0,
+                b: 128,
+                a: 255,
+            }),
+            "pink" => Some(CssColor {
+                r: 255,
+                g: 192,
+                b: 203,
+                a: 255,
+            }),
             "transparent" => Some(CssColor::TRANSPARENT),
-            "cyan" | "aqua"           => Some(CssColor { r: 0,   g: 255, b: 255, a: 255 }),
-            "magenta" | "fuchsia"     => Some(CssColor { r: 255, g: 0,   b: 255, a: 255 }),
-            "lime"                    => Some(CssColor { r: 0,   g: 255, b: 0,   a: 255 }),
-            "navy"                    => Some(CssColor { r: 0,   g: 0,   b: 128, a: 255 }),
-            "teal"                    => Some(CssColor { r: 0,   g: 128, b: 128, a: 255 }),
-            "maroon"                  => Some(CssColor { r: 128, g: 0,   b: 0,   a: 255 }),
-            "olive"                   => Some(CssColor { r: 128, g: 128, b: 0,   a: 255 }),
-            "silver"                  => Some(CssColor { r: 192, g: 192, b: 192, a: 255 }),
-            "coral"                   => Some(CssColor { r: 255, g: 127, b: 80,  a: 255 }),
-            "salmon"                  => Some(CssColor { r: 250, g: 128, b: 114, a: 255 }),
-            "skyblue"                 => Some(CssColor { r: 135, g: 206, b: 235, a: 255 }),
-            "tomato"                  => Some(CssColor { r: 255, g: 99,  b: 71,  a: 255 }),
-            "indigo"                  => Some(CssColor { r: 75,  g: 0,   b: 130, a: 255 }),
-            "violet"                  => Some(CssColor { r: 238, g: 130, b: 238, a: 255 }),
-            "brown"                   => Some(CssColor { r: 165, g: 42,  b: 42,  a: 255 }),
-            "tan"                     => Some(CssColor { r: 210, g: 180, b: 140, a: 255 }),
-            "lightgray" | "lightgrey" => Some(CssColor { r: 211, g: 211, b: 211, a: 255 }),
-            "darkgray"  | "darkgrey"  => Some(CssColor { r: 169, g: 169, b: 169, a: 255 }),
-            "whitesmoke"              => Some(CssColor { r: 245, g: 245, b: 245, a: 255 }),
-            "beige"                   => Some(CssColor { r: 245, g: 245, b: 220, a: 255 }),
-            "gold"                    => Some(CssColor { r: 255, g: 215, b: 0,   a: 255 }),
-            "crimson"                 => Some(CssColor { r: 220, g: 20,  b: 60,  a: 255 }),
-            "hotpink"                 => Some(CssColor { r: 255, g: 105, b: 180, a: 255 }),
-            "lightblue"               => Some(CssColor { r: 173, g: 216, b: 230, a: 255 }),
-            "lightgreen"              => Some(CssColor { r: 144, g: 238, b: 144, a: 255 }),
-            "lightyellow"             => Some(CssColor { r: 255, g: 255, b: 224, a: 255 }),
-            "darkblue"                => Some(CssColor { r: 0,   g: 0,   b: 139, a: 255 }),
-            "darkgreen"               => Some(CssColor { r: 0,   g: 100, b: 0,   a: 255 }),
-            "darkred"                 => Some(CssColor { r: 139, g: 0,   b: 0,   a: 255 }),
-            "darkorange"              => Some(CssColor { r: 255, g: 140, b: 0,   a: 255 }),
-            "deeppink"                => Some(CssColor { r: 255, g: 20,  b: 147, a: 255 }),
-            "deepskyblue"             => Some(CssColor { r: 0,   g: 191, b: 255, a: 255 }),
-            "forestgreen"             => Some(CssColor { r: 34,  g: 139, b: 34,  a: 255 }),
-            "limegreen"               => Some(CssColor { r: 50,  g: 205, b: 50,  a: 255 }),
-            "mediumblue"              => Some(CssColor { r: 0,   g: 0,   b: 205, a: 255 }),
-            "midnightblue"            => Some(CssColor { r: 25,  g: 25,  b: 112, a: 255 }),
-            "royalblue"               => Some(CssColor { r: 65,  g: 105, b: 225, a: 255 }),
-            "slategray" | "slategrey" => Some(CssColor { r: 112, g: 128, b: 144, a: 255 }),
-            "steelblue"               => Some(CssColor { r: 70,  g: 130, b: 180, a: 255 }),
+            "cyan" | "aqua" => Some(CssColor {
+                r: 0,
+                g: 255,
+                b: 255,
+                a: 255,
+            }),
+            "magenta" | "fuchsia" => Some(CssColor {
+                r: 255,
+                g: 0,
+                b: 255,
+                a: 255,
+            }),
+            "lime" => Some(CssColor {
+                r: 0,
+                g: 255,
+                b: 0,
+                a: 255,
+            }),
+            "navy" => Some(CssColor {
+                r: 0,
+                g: 0,
+                b: 128,
+                a: 255,
+            }),
+            "teal" => Some(CssColor {
+                r: 0,
+                g: 128,
+                b: 128,
+                a: 255,
+            }),
+            "maroon" => Some(CssColor {
+                r: 128,
+                g: 0,
+                b: 0,
+                a: 255,
+            }),
+            "olive" => Some(CssColor {
+                r: 128,
+                g: 128,
+                b: 0,
+                a: 255,
+            }),
+            "silver" => Some(CssColor {
+                r: 192,
+                g: 192,
+                b: 192,
+                a: 255,
+            }),
+            "coral" => Some(CssColor {
+                r: 255,
+                g: 127,
+                b: 80,
+                a: 255,
+            }),
+            "salmon" => Some(CssColor {
+                r: 250,
+                g: 128,
+                b: 114,
+                a: 255,
+            }),
+            "skyblue" => Some(CssColor {
+                r: 135,
+                g: 206,
+                b: 235,
+                a: 255,
+            }),
+            "tomato" => Some(CssColor {
+                r: 255,
+                g: 99,
+                b: 71,
+                a: 255,
+            }),
+            "indigo" => Some(CssColor {
+                r: 75,
+                g: 0,
+                b: 130,
+                a: 255,
+            }),
+            "violet" => Some(CssColor {
+                r: 238,
+                g: 130,
+                b: 238,
+                a: 255,
+            }),
+            "brown" => Some(CssColor {
+                r: 165,
+                g: 42,
+                b: 42,
+                a: 255,
+            }),
+            "tan" => Some(CssColor {
+                r: 210,
+                g: 180,
+                b: 140,
+                a: 255,
+            }),
+            "lightgray" | "lightgrey" => Some(CssColor {
+                r: 211,
+                g: 211,
+                b: 211,
+                a: 255,
+            }),
+            "darkgray" | "darkgrey" => Some(CssColor {
+                r: 169,
+                g: 169,
+                b: 169,
+                a: 255,
+            }),
+            "whitesmoke" => Some(CssColor {
+                r: 245,
+                g: 245,
+                b: 245,
+                a: 255,
+            }),
+            "beige" => Some(CssColor {
+                r: 245,
+                g: 245,
+                b: 220,
+                a: 255,
+            }),
+            "gold" => Some(CssColor {
+                r: 255,
+                g: 215,
+                b: 0,
+                a: 255,
+            }),
+            "crimson" => Some(CssColor {
+                r: 220,
+                g: 20,
+                b: 60,
+                a: 255,
+            }),
+            "hotpink" => Some(CssColor {
+                r: 255,
+                g: 105,
+                b: 180,
+                a: 255,
+            }),
+            "lightblue" => Some(CssColor {
+                r: 173,
+                g: 216,
+                b: 230,
+                a: 255,
+            }),
+            "lightgreen" => Some(CssColor {
+                r: 144,
+                g: 238,
+                b: 144,
+                a: 255,
+            }),
+            "lightyellow" => Some(CssColor {
+                r: 255,
+                g: 255,
+                b: 224,
+                a: 255,
+            }),
+            "darkblue" => Some(CssColor {
+                r: 0,
+                g: 0,
+                b: 139,
+                a: 255,
+            }),
+            "darkgreen" => Some(CssColor {
+                r: 0,
+                g: 100,
+                b: 0,
+                a: 255,
+            }),
+            "darkred" => Some(CssColor {
+                r: 139,
+                g: 0,
+                b: 0,
+                a: 255,
+            }),
+            "darkorange" => Some(CssColor {
+                r: 255,
+                g: 140,
+                b: 0,
+                a: 255,
+            }),
+            "deeppink" => Some(CssColor {
+                r: 255,
+                g: 20,
+                b: 147,
+                a: 255,
+            }),
+            "deepskyblue" => Some(CssColor {
+                r: 0,
+                g: 191,
+                b: 255,
+                a: 255,
+            }),
+            "forestgreen" => Some(CssColor {
+                r: 34,
+                g: 139,
+                b: 34,
+                a: 255,
+            }),
+            "limegreen" => Some(CssColor {
+                r: 50,
+                g: 205,
+                b: 50,
+                a: 255,
+            }),
+            "mediumblue" => Some(CssColor {
+                r: 0,
+                g: 0,
+                b: 205,
+                a: 255,
+            }),
+            "midnightblue" => Some(CssColor {
+                r: 25,
+                g: 25,
+                b: 112,
+                a: 255,
+            }),
+            "royalblue" => Some(CssColor {
+                r: 65,
+                g: 105,
+                b: 225,
+                a: 255,
+            }),
+            "slategray" | "slategrey" => Some(CssColor {
+                r: 112,
+                g: 128,
+                b: 144,
+                a: 255,
+            }),
+            "steelblue" => Some(CssColor {
+                r: 70,
+                g: 130,
+                b: 180,
+                a: 255,
+            }),
             _ => None,
         }
     }
@@ -128,7 +383,9 @@ pub struct Selector {
 impl Selector {
     /// Returns (id_count, class_count, tag_count) — higher is more specific.
     pub fn specificity(&self) -> (usize, usize, usize) {
-        let (ai, ac, at) = self.ancestor.as_ref()
+        let (ai, ac, at) = self
+            .ancestor
+            .as_ref()
             .map(|(_, a)| a.specificity())
             .unwrap_or((0, 0, 0));
         (
@@ -162,14 +419,20 @@ pub struct CssParser {
 
 impl CssParser {
     pub fn parse(css: &str) -> Stylesheet {
-        let mut p = CssParser { pos: 0, input: css.chars().collect() };
+        let mut p = CssParser {
+            pos: 0,
+            input: css.chars().collect(),
+        };
         let rules = p.parse_rules();
         Stylesheet { rules }
     }
 
     /// Parses a bare declaration list, as found in an element's `style` attribute.
     pub fn parse_inline_declarations(raw: &str) -> Vec<Declaration> {
-        let mut p = CssParser { pos: 0, input: raw.chars().collect() };
+        let mut p = CssParser {
+            pos: 0,
+            input: raw.chars().collect(),
+        };
         p.parse_declarations()
     }
 
@@ -177,7 +440,9 @@ impl CssParser {
         let mut rules = Vec::new();
         loop {
             self.skip_whitespace_and_comments();
-            if self.eof() { break; }
+            if self.eof() {
+                break;
+            }
             let pos_before = self.pos;
             if let Some(rule) = self.parse_rule() {
                 rules.push(rule);
@@ -191,23 +456,37 @@ impl CssParser {
 
     fn parse_rule(&mut self) -> Option<Rule> {
         let selectors = self.parse_selectors();
-        if selectors.is_empty() { self.skip_block(); return None; }
+        if selectors.is_empty() {
+            self.skip_block();
+            return None;
+        }
         self.skip_whitespace_and_comments();
-        if self.eof() || self.current() != '{' { return None; }
+        if self.eof() || self.current() != '{' {
+            return None;
+        }
         self.consume(); // '{'
         let declarations = self.parse_declarations();
-        if !self.eof() && self.current() == '}' { self.consume(); }
-        Some(Rule { selectors, declarations })
+        if !self.eof() && self.current() == '}' {
+            self.consume();
+        }
+        Some(Rule {
+            selectors,
+            declarations,
+        })
     }
 
     fn parse_selectors(&mut self) -> Vec<Selector> {
         let mut selectors = Vec::new();
         loop {
             self.skip_whitespace_and_comments();
-            if self.eof() || self.current() == '{' { break; }
+            if self.eof() || self.current() == '{' {
+                break;
+            }
             selectors.push(self.parse_compound_selector());
             self.skip_whitespace_and_comments();
-            if self.eof() || self.current() != ',' { break; }
+            if self.eof() || self.current() != ',' {
+                break;
+            }
             self.consume(); // ','
         }
         selectors
@@ -217,7 +496,9 @@ impl CssParser {
         let mut left = self.parse_simple_selector();
         let mut depth: usize = 0;
         loop {
-            if depth >= 32 { break; }
+            if depth >= 32 {
+                break;
+            }
             // Detect combinator: whitespace before a non-special char, or explicit '>'
             let had_whitespace = !self.eof() && self.input[self.pos].is_whitespace();
             self.skip_whitespace_and_comments();
@@ -229,8 +510,7 @@ impl CssParser {
                 self.skip_whitespace_and_comments();
                 Combinator::Child
             } else if had_whitespace
-                && (self.current().is_alphanumeric()
-                    || matches!(self.current(), '#' | '.' | '*'))
+                && (self.current().is_alphanumeric() || matches!(self.current(), '#' | '.' | '*'))
             {
                 Combinator::Descendant
             } else {
@@ -249,7 +529,12 @@ impl CssParser {
     }
 
     fn parse_simple_selector(&mut self) -> Selector {
-        let mut sel = Selector { tag_name: None, id: None, classes: Vec::new(), ancestor: None };
+        let mut sel = Selector {
+            tag_name: None,
+            id: None,
+            classes: Vec::new(),
+            ancestor: None,
+        };
         while !self.eof() {
             let c = self.current();
             if c == '#' {
@@ -273,7 +558,9 @@ impl CssParser {
         let mut decls = Vec::new();
         loop {
             self.skip_whitespace_and_comments();
-            if self.eof() || self.current() == '}' { break; }
+            if self.eof() || self.current() == '}' {
+                break;
+            }
             decls.extend(self.parse_declaration());
         }
         decls
@@ -281,12 +568,23 @@ impl CssParser {
 
     fn parse_declaration(&mut self) -> Vec<Declaration> {
         let name = self.parse_identifier();
-        if name.is_empty() { self.skip_to(';'); self.consume_if(';'); return vec![]; }
+        if name.is_empty() {
+            self.skip_to(';');
+            self.consume_if(';');
+            return vec![];
+        }
         self.skip_whitespace_and_comments();
-        if self.eof() || self.current() != ':' { self.skip_to(';'); self.consume_if(';'); return vec![]; }
+        if self.eof() || self.current() != ':' {
+            self.skip_to(';');
+            self.consume_if(';');
+            return vec![];
+        }
         self.consume(); // ':'
         self.skip_whitespace_and_comments();
-        let raw = self.consume_while(|c| c != ';' && c != '}').trim().to_string();
+        let raw = self
+            .consume_while(|c| c != ';' && c != '}')
+            .trim()
+            .to_string();
         self.consume_if(';');
         expand_shorthand(&name, &raw)
     }
@@ -295,37 +593,56 @@ impl CssParser {
         let s = raw.trim();
         // rem must be checked before em (longer suffix first)
         if let Some(rest) = s.strip_suffix("rem") {
-            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Rem); }
+            if let Ok(n) = rest.trim().parse::<f32>() {
+                return Value::Length(n, Unit::Rem);
+            }
         }
         if let Some(rest) = s.strip_suffix("px") {
-            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Px); }
+            if let Ok(n) = rest.trim().parse::<f32>() {
+                return Value::Length(n, Unit::Px);
+            }
         }
         if let Some(rest) = s.strip_suffix("em") {
-            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Em); }
+            if let Ok(n) = rest.trim().parse::<f32>() {
+                return Value::Length(n, Unit::Em);
+            }
         }
         if let Some(rest) = s.strip_suffix('%') {
-            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Percent); }
+            if let Ok(n) = rest.trim().parse::<f32>() {
+                return Value::Length(n, Unit::Percent);
+            }
         }
         if let Some(rest) = s.strip_suffix("vw") {
-            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Vw); }
+            if let Ok(n) = rest.trim().parse::<f32>() {
+                return Value::Length(n, Unit::Vw);
+            }
         }
         if let Some(rest) = s.strip_suffix("vh") {
-            if let Ok(n) = rest.trim().parse::<f32>() { return Value::Length(n, Unit::Vh); }
+            if let Ok(n) = rest.trim().parse::<f32>() {
+                return Value::Length(n, Unit::Vh);
+            }
         }
         // bare number
-        if let Ok(n) = s.parse::<f32>() { return Value::Number(n); }
+        if let Ok(n) = s.parse::<f32>() {
+            return Value::Number(n);
+        }
         // hex color
         if s.starts_with('#') {
-            if let Some(c) = CssColor::from_hex(s) { return Value::Color(c); }
+            if let Some(c) = CssColor::from_hex(s) {
+                return Value::Color(c);
+            }
         }
         // named color
-        if let Some(c) = CssColor::from_keyword(s) { return Value::Color(c); }
+        if let Some(c) = CssColor::from_keyword(s) {
+            return Value::Color(c);
+        }
         // fallback
         Value::Keyword(s.to_string())
     }
 
     fn parse_identifier(&mut self) -> String {
-        self.consume_while(|c| c.is_alphanumeric() || c == '-' || c == '_').to_lowercase()
+        self.consume_while(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            .to_lowercase()
     }
 
     fn skip_block(&mut self) {
@@ -341,8 +658,12 @@ impl CssParser {
             self.consume_while(|c| c.is_whitespace());
             if self.starts_with("/*") {
                 self.pos += 2;
-                while !self.eof() && !self.starts_with("*/") { self.consume(); }
-                if !self.eof() { self.pos += 2; }
+                while !self.eof() && !self.starts_with("*/") {
+                    self.consume();
+                }
+                if !self.eof() {
+                    self.pos += 2;
+                }
             } else {
                 break;
             }
@@ -354,7 +675,9 @@ impl CssParser {
     }
 
     fn consume_if(&mut self, c: char) {
-        if !self.eof() && self.current() == c { self.consume(); }
+        if !self.eof() && self.current() == c {
+            self.consume();
+        }
     }
 
     fn starts_with(&self, s: &str) -> bool {
@@ -364,19 +687,31 @@ impl CssParser {
             match s_chars.next() {
                 None => return true,
                 Some(c) => {
-                    if i >= self.input.len() || self.input[i] != c { return false; }
+                    if i >= self.input.len() || self.input[i] != c {
+                        return false;
+                    }
                     i += 1;
                 }
             }
         }
     }
 
-    fn eof(&self) -> bool { self.pos >= self.input.len() }
-    fn current(&self) -> char { self.input[self.pos] }
-    fn consume(&mut self) -> char { let c = self.input[self.pos]; self.pos += 1; c }
+    fn eof(&self) -> bool {
+        self.pos >= self.input.len()
+    }
+    fn current(&self) -> char {
+        self.input[self.pos]
+    }
+    fn consume(&mut self) -> char {
+        let c = self.input[self.pos];
+        self.pos += 1;
+        c
+    }
     fn consume_while(&mut self, test: impl Fn(char) -> bool) -> String {
         let mut s = String::new();
-        while !self.eof() && test(self.current()) { s.push(self.consume()); }
+        while !self.eof() && test(self.current()) {
+            s.push(self.consume());
+        }
         s
     }
 }
@@ -384,26 +719,22 @@ impl CssParser {
 fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
     match prop {
         "margin" | "padding" => {
-            let values: Vec<Value> = raw.split_whitespace()
-                .map(CssParser::parse_value)
-                .collect();
+            let values: Vec<Value> = raw.split_whitespace().map(CssParser::parse_value).collect();
             expand_box_model(prop, &values)
         }
         "border-width" => {
-            let values: Vec<Value> = raw.split_whitespace()
-                .map(CssParser::parse_value)
-                .collect();
+            let values: Vec<Value> = raw.split_whitespace().map(CssParser::parse_value).collect();
             expand_box_model("border", &values)
         }
         "font" => expand_font_shorthand(raw),
         "border" | "border-top" | "border-right" | "border-bottom" | "border-left" => {
             let mut decls = Vec::new();
             let sides: &[&str] = match prop {
-                "border-top"    => &["top"],
-                "border-right"  => &["right"],
+                "border-top" => &["top"],
+                "border-right" => &["right"],
                 "border-bottom" => &["bottom"],
-                "border-left"   => &["left"],
-                _               => &["top", "right", "bottom", "left"],
+                "border-left" => &["left"],
+                _ => &["top", "right", "bottom", "left"],
             };
             let mut width: Option<Value> = None;
             let mut color: Option<Value> = None;
@@ -411,7 +742,7 @@ fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
                 let v = CssParser::parse_value(part);
                 match &v {
                     Value::Length(_, _) if width.is_none() => width = Some(v),
-                    Value::Color(_)                        => color = Some(v),
+                    Value::Color(_) => color = Some(v),
                     _ => {}
                 }
             }
@@ -430,19 +761,41 @@ fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
 }
 
 fn expand_box_model(prefix: &str, values: &[Value]) -> Vec<(String, Value)> {
-    if values.is_empty() { return vec![]; }
+    if values.is_empty() {
+        return vec![];
+    }
     let (top, right, bottom, left) = match values.len() {
-        1 => (values[0].clone(), values[0].clone(), values[0].clone(), values[0].clone()),
-        2 => (values[0].clone(), values[1].clone(), values[0].clone(), values[1].clone()),
-        3 => (values[0].clone(), values[1].clone(), values[2].clone(), values[1].clone()),
-        _ => (values[0].clone(), values[1].clone(), values[2].clone(), values[3].clone()),
+        1 => (
+            values[0].clone(),
+            values[0].clone(),
+            values[0].clone(),
+            values[0].clone(),
+        ),
+        2 => (
+            values[0].clone(),
+            values[1].clone(),
+            values[0].clone(),
+            values[1].clone(),
+        ),
+        3 => (
+            values[0].clone(),
+            values[1].clone(),
+            values[2].clone(),
+            values[1].clone(),
+        ),
+        _ => (
+            values[0].clone(),
+            values[1].clone(),
+            values[2].clone(),
+            values[3].clone(),
+        ),
     };
     let suffix = if prefix == "border" { "-width" } else { "" };
     vec![
-        (format!("{}-top{}", prefix, suffix),    top),
-        (format!("{}-right{}", prefix, suffix),  right),
+        (format!("{}-top{}", prefix, suffix), top),
+        (format!("{}-right{}", prefix, suffix), right),
         (format!("{}-bottom{}", prefix, suffix), bottom),
-        (format!("{}-left{}", prefix, suffix),   left),
+        (format!("{}-left{}", prefix, suffix), left),
     ]
 }
 
@@ -460,8 +813,20 @@ fn expand_font_shorthand(raw: &str) -> Vec<(String, Value)> {
     }
     for part in &parts {
         match *part {
-            "bold" => { decls.push(("font-weight".to_string(), Value::Keyword("bold".to_string()))); break; }
-            "normal" => { decls.push(("font-weight".to_string(), Value::Keyword("normal".to_string()))); break; }
+            "bold" => {
+                decls.push((
+                    "font-weight".to_string(),
+                    Value::Keyword("bold".to_string()),
+                ));
+                break;
+            }
+            "normal" => {
+                decls.push((
+                    "font-weight".to_string(),
+                    Value::Keyword("normal".to_string()),
+                ));
+                break;
+            }
             _ => {}
         }
     }

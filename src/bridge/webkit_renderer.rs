@@ -27,16 +27,20 @@ impl WebKitRenderer {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         let config_dir = format!("{}/.config/feather", home);
         crate::features::ad_blocker::AdBlocker::bundle_default_blocklist(&config_dir);
-        let ad_blocker = Rc::new(crate::features::ad_blocker::AdBlocker::load(
-            &format!("{}/blocklist.txt", config_dir),
-        ));
+        let ad_blocker = Rc::new(crate::features::ad_blocker::AdBlocker::load(&format!(
+            "{}/blocklist.txt",
+            config_dir
+        )));
         let blocker_ref = Rc::clone(&ad_blocker);
         webview.connect_decide_policy(move |_view, decision, decision_type| {
             if !adblock_enabled.get() {
                 return false;
             }
             if decision_type == PolicyDecisionType::NavigationAction {
-                if let Ok(nav) = decision.clone().downcast::<webkit6::NavigationPolicyDecision>() {
+                if let Ok(nav) = decision
+                    .clone()
+                    .downcast::<webkit6::NavigationPolicyDecision>()
+                {
                     if let Some(req) = nav.navigation_action().and_then(|a| a.request()) {
                         if let Some(uri) = req.uri() {
                             if blocker_ref.is_blocked(uri.as_str()) {
@@ -50,7 +54,10 @@ impl WebKitRenderer {
             false
         });
         Self {
-            inner: Rc::new(RefCell::new(Inner { webview, suspended_url: None })),
+            inner: Rc::new(RefCell::new(Inner {
+                webview,
+                suspended_url: None,
+            })),
         }
     }
 }
@@ -83,11 +90,21 @@ impl PageRenderer for WebKitRenderer {
     }
 
     fn current_url(&self) -> String {
-        self.inner.borrow().webview.uri().map(|s| s.to_string()).unwrap_or_default()
+        self.inner
+            .borrow()
+            .webview
+            .uri()
+            .map(|s| s.to_string())
+            .unwrap_or_default()
     }
 
     fn title(&self) -> String {
-        self.inner.borrow().webview.title().map(|s| s.to_string()).unwrap_or_default()
+        self.inner
+            .borrow()
+            .webview
+            .title()
+            .map(|s| s.to_string())
+            .unwrap_or_default()
     }
 
     fn can_go_back(&self) -> bool {
@@ -141,18 +158,24 @@ impl PageRenderer for WebKitRenderer {
     }
 
     fn connect_title_changed(&self, f: Box<dyn Fn(String) + 'static>) {
-        self.inner.borrow().webview.connect_title_notify(move |view| {
-            if let Some(title) = view.title() {
-                f(title.to_string());
-            }
-        });
+        self.inner
+            .borrow()
+            .webview
+            .connect_title_notify(move |view| {
+                if let Some(title) = view.title() {
+                    f(title.to_string());
+                }
+            });
     }
 
     fn connect_load_finished(&self, f: Box<dyn Fn() + 'static>) {
-        self.inner.borrow().webview.connect_load_changed(move |_view, event| {
-            if event == LoadEvent::Finished {
-                f();
-            }
-        });
+        self.inner
+            .borrow()
+            .webview
+            .connect_load_changed(move |_view, event| {
+                if event == LoadEvent::Finished {
+                    f();
+                }
+            });
     }
 }

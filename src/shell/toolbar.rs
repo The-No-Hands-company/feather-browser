@@ -44,12 +44,24 @@ impl Toolbar {
         hbox.append(&adblock_toggle);
         hbox.append(&freeze_toggle);
 
-        Self { widget: hbox, url_entry, back_btn, fwd_btn, reload_btn, adblock_toggle, freeze_toggle }
+        Self {
+            widget: hbox,
+            url_entry,
+            back_btn,
+            fwd_btn,
+            reload_btn,
+            adblock_toggle,
+            freeze_toggle,
+        }
     }
 
-    pub fn widget(&self) -> gtk4::Widget { self.widget.clone().upcast() }
+    pub fn widget(&self) -> gtk4::Widget {
+        self.widget.clone().upcast()
+    }
 
-    pub fn set_url(&self, url: &str) { self.url_entry.set_text(url); }
+    pub fn set_url(&self, url: &str) {
+        self.url_entry.set_text(url);
+    }
 
     pub fn connect_navigate<F: Fn(String) + 'static>(&self, f: F) {
         self.url_entry.connect_activate(move |entry| {
@@ -73,13 +85,19 @@ impl Toolbar {
     }
 
     pub fn connect_adblock_toggled<F: Fn(bool) + 'static>(&self, f: F) {
-        self.adblock_toggle.connect_toggled(move |btn| f(btn.is_active()));
+        self.adblock_toggle
+            .connect_toggled(move |btn| f(btn.is_active()));
     }
 
     pub fn connect_freeze_toggled<F: Fn(bool) + 'static>(&self, f: F) {
-        self.freeze_toggle.connect_toggled(move |btn| f(btn.is_active()));
+        self.freeze_toggle
+            .connect_toggled(move |btn| f(btn.is_active()));
     }
 
-    pub fn adblock_enabled(&self) -> bool { self.adblock_toggle.is_active() }
-    pub fn freeze_enabled(&self) -> bool { self.freeze_toggle.is_active() }
+    pub fn adblock_enabled(&self) -> bool {
+        self.adblock_toggle.is_active()
+    }
+    pub fn freeze_enabled(&self) -> bool {
+        self.freeze_toggle.is_active()
+    }
 }

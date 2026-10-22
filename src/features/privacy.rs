@@ -3,10 +3,7 @@
 // Non-utm tracking params stripped by exact key match (case-insensitive).
 // All utm_* params are stripped by prefix — no need to list them here.
 const TRACKING_PARAMS: &[&str] = &[
-    "fbclid", "gclid", "msclkid", "dclid", "twclid",
-    "mc_cid", "mc_eid",
-    "_ga", "_gl",
-    "igshid",
+    "fbclid", "gclid", "msclkid", "dclid", "twclid", "mc_cid", "mc_eid", "_ga", "_gl", "igshid",
 ];
 
 pub struct Privacy;

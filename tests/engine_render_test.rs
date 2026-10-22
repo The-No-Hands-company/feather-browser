@@ -34,7 +34,12 @@ fn test_paint_produces_correct_dimensions() {
     let sheet = CssParser::parse("div { background-color: red; }");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 100.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 100.0, height: 100.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 100.0,
+        height: 100.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
     assert_eq!(canvas.width, 100);
     assert_eq!(canvas.height, 100);
@@ -46,7 +51,12 @@ fn test_red_background_paints_red_pixels() {
     let sheet = CssParser::parse("body { background-color: red; }");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 10.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 10.0, height: 10.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 10.0,
+        height: 10.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
     // At least one pixel should be red (or canvas stayed white if body has no height)
     // We accept both: the important thing is no panic
@@ -68,11 +78,15 @@ fn test_blit_glyph_writes_pixels() {
     blit_glyph(&mut canvas, &glyph, 10, 30, CssColor::BLACK);
     // At least one pixel should now be non-white
     let has_dark = canvas.pixels.iter().any(|p| p.r < 255);
-    assert!(has_dark, "blit_glyph must write non-white pixels onto the canvas");
+    assert!(
+        has_dark,
+        "blit_glyph must write non-white pixels onto the canvas"
+    );
 }
 
 #[test]
 fn test_larger_font_size_covers_more_canvas_pixels() {
+    use feather::engine::css::CssColor;
     use feather::engine::{
         css::CssParser,
         html::HtmlParser,
@@ -80,9 +94,13 @@ fn test_larger_font_size_covers_more_canvas_pixels() {
         render::Painter,
         style::style_tree,
     };
-    use feather::engine::css::CssColor;
 
-    let viewport = Rect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
 
     let dom_large = HtmlParser::parse("<p>X</p>");
     let sheet_large = CssParser::parse("p { font-size: 32px; color: black; }");
@@ -97,7 +115,11 @@ fn test_larger_font_size_covers_more_canvas_pixels() {
     let canvas_small = Painter::paint(&layout_small, viewport, 16.0);
 
     let non_white = |canvas: &feather::engine::render::Canvas| {
-        canvas.pixels.iter().filter(|&&p| p != CssColor::WHITE).count()
+        canvas
+            .pixels
+            .iter()
+            .filter(|&&p| p != CssColor::WHITE)
+            .count()
     };
     let large_pixels = non_white(&canvas_large);
     let small_pixels = non_white(&canvas_small);
@@ -112,7 +134,11 @@ fn test_larger_font_size_covers_more_canvas_pixels() {
 fn test_huge_font_size_does_not_panic() {
     use feather::engine::font::FontMetrics;
     let m = FontMetrics::load(100_000.0);
-    assert!(m.size <= 512.0, "huge font-size must be clamped: got {}", m.size);
+    assert!(
+        m.size <= 512.0,
+        "huge font-size must be clamped: got {}",
+        m.size
+    );
 }
 
 #[test]
@@ -131,6 +157,7 @@ fn test_zero_font_size_falls_back_to_default() {
 
 #[test]
 fn test_render_loop_pen_advances_with_cached_glyphs() {
+    use feather::engine::css::CssColor;
     use feather::engine::{
         css::CssParser,
         html::HtmlParser,
@@ -138,18 +165,24 @@ fn test_render_loop_pen_advances_with_cached_glyphs() {
         render::Painter,
         style::style_tree,
     };
-    use feather::engine::css::CssColor;
 
     let dom = HtmlParser::parse("<p>Hello</p>");
     let sheet = CssParser::parse("p { font-size: 16px; color: black; display: block; }");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 400.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 400.0, height: 100.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 400.0,
+        height: 100.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
 
     // Count columns (x positions) that contain at least one non-white pixel
     let non_white_cols = (0..canvas.width)
-        .filter(|&x| (0..canvas.height).any(|y| canvas.pixels[y * canvas.width + x] != CssColor::WHITE))
+        .filter(|&x| {
+            (0..canvas.height).any(|y| canvas.pixels[y * canvas.width + x] != CssColor::WHITE)
+        })
         .count();
 
     // "Hello" is 5 chars; if pen advance works (advance_width > 0 per char),
@@ -187,14 +220,21 @@ fn test_pen_advance_f32_accumulation() {
     let sheet = CssParser::parse("p { font-size: 16px; color: black; display: block; }");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 400.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 400.0, height: 100.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 400.0,
+        height: 100.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
 
     let fm = FontMetrics::load(16.0);
     let single_char_px = fm.advance_width('M') as usize;
 
     let non_white_cols = (0..canvas.width)
-        .filter(|&x| (0..canvas.height).any(|y| canvas.pixels[y * canvas.width + x] != CssColor::WHITE))
+        .filter(|&x| {
+            (0..canvas.height).any(|y| canvas.pixels[y * canvas.width + x] != CssColor::WHITE)
+        })
         .count();
 
     // 5 M's with correct advance must span at least 4× a single M's width in columns.
@@ -202,7 +242,9 @@ fn test_pen_advance_f32_accumulation() {
         non_white_cols >= 4 * single_char_px,
         "Text 'MMMMM' should span ≥{} non-white columns (4×{}px); got {} — \
          pen_x may not be advancing correctly",
-        4 * single_char_px, single_char_px, non_white_cols
+        4 * single_char_px,
+        single_char_px,
+        non_white_cols
     );
 }
 
@@ -219,11 +261,22 @@ fn test_img_placeholder_paints_grey_fill() {
     let sheet = CssParser::parse("");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 800.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 200.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 800.0,
+        height: 200.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
     // The img box is painted grey (180,180,180) with a darker border; the canvas must contain grey pixels.
-    let has_grey = canvas.pixels.iter().any(|p| p.r == 180 && p.g == 180 && p.b == 180);
-    assert!(has_grey, "canvas should contain grey placeholder pixels from the img box");
+    let has_grey = canvas
+        .pixels
+        .iter()
+        .any(|p| p.r == 180 && p.g == 180 && p.b == 180);
+    assert!(
+        has_grey,
+        "canvas should contain grey placeholder pixels from the img box"
+    );
 }
 
 #[test]
@@ -239,10 +292,21 @@ fn test_background_color_paints_box() {
     let sheet = CssParser::parse("");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 800.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 200.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 800.0,
+        height: 200.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
-    let has_red = canvas.pixels.iter().any(|p| p.r == 255 && p.g == 0 && p.b == 0);
-    assert!(has_red, "canvas must contain a red pixel from background-color: red");
+    let has_red = canvas
+        .pixels
+        .iter()
+        .any(|p| p.r == 255 && p.g == 0 && p.b == 0);
+    assert!(
+        has_red,
+        "canvas must contain a red pixel from background-color: red"
+    );
 }
 
 #[test]
@@ -254,12 +318,22 @@ fn test_border_color_paints_edge() {
         render::Painter,
         style::style_tree,
     };
-    let dom = HtmlParser::parse("<div style=\"border: 4px solid blue; background-color: white; width: 100px;\">x</div>");
+    let dom = HtmlParser::parse(
+        "<div style=\"border: 4px solid blue; background-color: white; width: 100px;\">x</div>",
+    );
     let sheet = CssParser::parse("");
     let styled = style_tree(&dom.root, &sheet);
     let layout = LayoutEngine::build(&styled, 800.0);
-    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 200.0 };
+    let viewport = Rect {
+        x: 0.0,
+        y: 0.0,
+        width: 800.0,
+        height: 200.0,
+    };
     let canvas = Painter::paint(&layout, viewport, 16.0);
-    let has_blue = canvas.pixels.iter().any(|p| p.b == 255 && p.r == 0 && p.g == 0);
+    let has_blue = canvas
+        .pixels
+        .iter()
+        .any(|p| p.b == 255 && p.r == 0 && p.g == 0);
     assert!(has_blue, "canvas must contain a blue pixel from the border");
 }

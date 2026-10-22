@@ -35,7 +35,10 @@ fn test_explicit_width_respected() {
         }
         b.children.iter().any(|c| find_width(c, min_w, max_w))
     }
-    assert!(find_width(&layout, 399.0, 401.0), "no box with width ~400px found");
+    assert!(
+        find_width(&layout, 399.0, 401.0),
+        "no box with width ~400px found"
+    );
 }
 
 #[test]
@@ -71,13 +74,19 @@ mod layout_tests {
     use feather::engine::css::{CssColor, CssParser};
     use feather::engine::font::FontMetrics;
     use feather::engine::html::HtmlParser;
-    use feather::engine::layout::{InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign};
+    use feather::engine::layout::{
+        InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign,
+    };
     use feather::engine::style::style_tree;
 
     fn find_line_boxes(lb: &LayoutBox) -> Option<&Vec<LineBox>> {
-        if !lb.line_boxes.is_empty() { return Some(&lb.line_boxes); }
+        if !lb.line_boxes.is_empty() {
+            return Some(&lb.line_boxes);
+        }
         for child in &lb.children {
-            if let Some(found) = find_line_boxes(child) { return Some(found); }
+            if let Some(found) = find_line_boxes(child) {
+                return Some(found);
+            }
         }
         None
     }
@@ -126,7 +135,9 @@ mod layout_tests {
 
         assert!(
             (first_item.x - expected_offset).abs() < 1.0,
-            "center offset should be ≈{:.2}, got {:.2}", expected_offset, first_item.x
+            "center offset should be ≈{:.2}, got {:.2}",
+            expected_offset,
+            first_item.x
         );
     }
 
@@ -153,7 +164,9 @@ mod layout_tests {
 
         assert!(
             (first_item.x - expected_offset).abs() < 1.0,
-            "right offset should be ≈{:.2}, got {:.2}", expected_offset, first_item.x
+            "right offset should be ≈{:.2}, got {:.2}",
+            expected_offset,
+            first_item.x
         );
     }
 
@@ -186,14 +199,20 @@ mod img_layout_tests {
         style::style_tree,
     };
 
-    fn find_img_box(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+    fn find_img_box(
+        lb: &feather::engine::layout::LayoutBox,
+    ) -> Option<&feather::engine::layout::LayoutBox> {
         if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
             if let NodeType::Element(e) = &s.node.node_type {
-                if e.tag_name == "img" { return Some(lb); }
+                if e.tag_name == "img" {
+                    return Some(lb);
+                }
             }
         }
         for child in &lb.children {
-            if let Some(found) = find_img_box(child) { return Some(found); }
+            if let Some(found) = find_img_box(child) {
+                return Some(found);
+            }
         }
         None
     }
@@ -205,8 +224,14 @@ mod img_layout_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let img = find_img_box(&layout).expect("img box not found in layout tree");
-        assert_eq!(img.dimensions.content.width, 100.0, "default img width must be 100");
-        assert_eq!(img.dimensions.content.height, 50.0, "default img height must be 50");
+        assert_eq!(
+            img.dimensions.content.width, 100.0,
+            "default img width must be 100"
+        );
+        assert_eq!(
+            img.dimensions.content.height, 50.0,
+            "default img height must be 50"
+        );
     }
 
     #[test]
@@ -216,8 +241,14 @@ mod img_layout_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let img = find_img_box(&layout).expect("img box not found in layout tree");
-        assert_eq!(img.dimensions.content.width, 200.0, "img width must read from attribute");
-        assert_eq!(img.dimensions.content.height, 80.0, "img height must read from attribute");
+        assert_eq!(
+            img.dimensions.content.width, 200.0,
+            "img width must read from attribute"
+        );
+        assert_eq!(
+            img.dimensions.content.height, 80.0,
+            "img height must read from attribute"
+        );
     }
 
     #[test]
@@ -227,30 +258,39 @@ mod img_layout_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let img = find_img_box(&layout).expect("img box not found in layout tree");
-        assert_eq!(img.dimensions.content.width, 60.0, "img width from attribute");
-        assert_eq!(img.dimensions.content.height, 50.0, "img height defaults to 50 when absent");
+        assert_eq!(
+            img.dimensions.content.width, 60.0,
+            "img width from attribute"
+        );
+        assert_eq!(
+            img.dimensions.content.height, 50.0,
+            "img height defaults to 50 when absent"
+        );
     }
 }
 
 #[cfg(test)]
 mod box_model_layout_tests {
     use feather::engine::{
-        css::CssParser,
-        html::HtmlParser,
-        layout::LayoutEngine,
-        style::style_tree,
+        css::CssParser, html::HtmlParser, layout::LayoutEngine, style::style_tree,
     };
 
-    fn first_block_box(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
-        use feather::engine::layout::BoxType;
+    fn first_block_box(
+        lb: &feather::engine::layout::LayoutBox,
+    ) -> Option<&feather::engine::layout::LayoutBox> {
         use feather::engine::dom::NodeType;
+        use feather::engine::layout::BoxType;
         if let BoxType::Block(s) = &lb.box_type {
             if let NodeType::Element(e) = &s.node.node_type {
-                if e.tag_name == "div" { return Some(lb); }
+                if e.tag_name == "div" {
+                    return Some(lb);
+                }
             }
         }
         for child in &lb.children {
-            if let Some(found) = first_block_box(child) { return Some(found); }
+            if let Some(found) = first_block_box(child) {
+                return Some(found);
+            }
         }
         None
     }
@@ -263,12 +303,20 @@ mod box_model_layout_tests {
         let layout = LayoutEngine::build(&styled, 800.0);
         let div = first_block_box(&layout).expect("div box not found");
         // content.x starts after left padding (10px offset from containing content.x)
-        assert!(div.dimensions.padding.left >= 10.0, "padding.left must be 10");
-        assert!(div.dimensions.padding.right >= 10.0, "padding.right must be 10");
+        assert!(
+            div.dimensions.padding.left >= 10.0,
+            "padding.left must be 10"
+        );
+        assert!(
+            div.dimensions.padding.right >= 10.0,
+            "padding.right must be 10"
+        );
         // border_box is content + padding on all sides
         let bb = div.dimensions.border_box();
-        assert!(bb.width >= div.dimensions.content.width + 20.0 - 0.01,
-            "border_box width must include left+right padding");
+        assert!(
+            bb.width >= div.dimensions.content.width + 20.0 - 0.01,
+            "border_box width must include left+right padding"
+        );
     }
 
     #[test]
@@ -292,30 +340,35 @@ mod box_model_layout_tests {
         assert_eq!(div.dimensions.border.left, 4.0, "border.left must be 4");
         assert_eq!(div.dimensions.border.right, 4.0, "border.right must be 4");
         let bb = div.dimensions.border_box();
-        assert!(bb.width >= div.dimensions.content.width + 8.0 - 0.01,
-            "border_box width must include left+right border");
+        assert!(
+            bb.width >= div.dimensions.content.width + 8.0 - 0.01,
+            "border_box width must include left+right border"
+        );
     }
 }
 
 #[cfg(test)]
 mod viewport_unit_tests {
     use feather::engine::{
-        css::CssParser,
-        html::HtmlParser,
-        layout::LayoutEngine,
-        style::style_tree,
+        css::CssParser, html::HtmlParser, layout::LayoutEngine, style::style_tree,
     };
 
-    fn first_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
-        use feather::engine::layout::BoxType;
+    fn first_div(
+        lb: &feather::engine::layout::LayoutBox,
+    ) -> Option<&feather::engine::layout::LayoutBox> {
         use feather::engine::dom::NodeType;
+        use feather::engine::layout::BoxType;
         if let BoxType::Block(s) = &lb.box_type {
             if let NodeType::Element(e) = &s.node.node_type {
-                if e.tag_name == "div" { return Some(lb); }
+                if e.tag_name == "div" {
+                    return Some(lb);
+                }
             }
         }
         for child in &lb.children {
-            if let Some(found) = first_div(child) { return Some(found); }
+            if let Some(found) = first_div(child) {
+                return Some(found);
+            }
         }
         None
     }
@@ -327,8 +380,11 @@ mod viewport_unit_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let div = first_div(&layout).expect("div not found");
-        assert!((div.dimensions.content.width - 400.0).abs() < 0.1,
-            "50vw with containing_width=800 must be 400px, got {}", div.dimensions.content.width);
+        assert!(
+            (div.dimensions.content.width - 400.0).abs() < 0.1,
+            "50vw with containing_width=800 must be 400px, got {}",
+            div.dimensions.content.width
+        );
     }
 
     #[test]
@@ -338,30 +394,36 @@ mod viewport_unit_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build_with_viewport(&styled, 800.0, 600.0);
         let div = first_div(&layout).expect("div not found");
-        assert!((div.dimensions.content.height - 300.0).abs() < 0.1,
-            "50vh with viewport_height=600 must be 300px, got {}", div.dimensions.content.height);
+        assert!(
+            (div.dimensions.content.height - 300.0).abs() < 0.1,
+            "50vh with viewport_height=600 must be 300px, got {}",
+            div.dimensions.content.height
+        );
     }
 }
 
 #[cfg(test)]
 mod min_max_width_tests {
     use feather::engine::{
-        css::CssParser,
-        html::HtmlParser,
-        layout::LayoutEngine,
-        style::style_tree,
+        css::CssParser, html::HtmlParser, layout::LayoutEngine, style::style_tree,
     };
 
-    fn first_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
-        use feather::engine::layout::BoxType;
+    fn first_div(
+        lb: &feather::engine::layout::LayoutBox,
+    ) -> Option<&feather::engine::layout::LayoutBox> {
         use feather::engine::dom::NodeType;
+        use feather::engine::layout::BoxType;
         if let BoxType::Block(s) = &lb.box_type {
             if let NodeType::Element(e) = &s.node.node_type {
-                if e.tag_name == "div" { return Some(lb); }
+                if e.tag_name == "div" {
+                    return Some(lb);
+                }
             }
         }
         for child in &lb.children {
-            if let Some(found) = first_div(child) { return Some(found); }
+            if let Some(found) = first_div(child) {
+                return Some(found);
+            }
         }
         None
     }
@@ -373,8 +435,11 @@ mod min_max_width_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let div = first_div(&layout).expect("div not found");
-        assert!((div.dimensions.content.width - 200.0).abs() < 0.1,
-            "min-width: 200px must clamp width up from 50px, got {}", div.dimensions.content.width);
+        assert!(
+            (div.dimensions.content.width - 200.0).abs() < 0.1,
+            "min-width: 200px must clamp width up from 50px, got {}",
+            div.dimensions.content.width
+        );
     }
 
     #[test]
@@ -384,18 +449,26 @@ mod min_max_width_tests {
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let div = first_div(&layout).expect("div not found");
-        assert!((div.dimensions.content.width - 300.0).abs() < 0.1,
-            "max-width: 300px must clamp auto width from 800 down, got {}", div.dimensions.content.width);
+        assert!(
+            (div.dimensions.content.width - 300.0).abs() < 0.1,
+            "max-width: 300px must clamp auto width from 800 down, got {}",
+            div.dimensions.content.width
+        );
     }
 
     #[test]
     fn test_min_max_width_no_effect_when_within() {
-        let dom = HtmlParser::parse("<div style=\"width: 400px; min-width: 100px; max-width: 600px;\">x</div>");
+        let dom = HtmlParser::parse(
+            "<div style=\"width: 400px; min-width: 100px; max-width: 600px;\">x</div>",
+        );
         let sheet = CssParser::parse("");
         let styled = style_tree(&dom.root, &sheet);
         let layout = LayoutEngine::build(&styled, 800.0);
         let div = first_div(&layout).expect("div not found");
-        assert!((div.dimensions.content.width - 400.0).abs() < 0.1,
-            "width within min/max must not be changed, got {}", div.dimensions.content.width);
+        assert!(
+            (div.dimensions.content.width - 400.0).abs() < 0.1,
+            "width within min/max must not be changed, got {}",
+            div.dimensions.content.width
+        );
     }
 }

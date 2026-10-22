@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use crate::engine::css::{CssColor, Value};
-use crate::engine::layout::{BoxType, LayoutBox, Rect};
 #[cfg(feature = "feather-renderer")]
 use crate::engine::dom::NodeType;
 #[cfg(feature = "feather-renderer")]
 use crate::engine::font::{FontMetrics, GlyphBitmap};
+use crate::engine::layout::{BoxType, LayoutBox, Rect};
 
 /// A software-rendered pixel buffer. Each pixel is RGBA (not pre-multiplied).
 #[derive(Debug, Clone)]
@@ -90,8 +90,16 @@ impl Painter {
 }
 
 #[cfg(feature = "feather-renderer")]
-fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y: f32, depth: usize) {
-    if depth >= 512 { return; }
+fn render_box(
+    canvas: &mut Canvas,
+    lb: &LayoutBox,
+    font: &FontMetrics,
+    scroll_y: f32,
+    depth: usize,
+) {
+    if depth >= 512 {
+        return;
+    }
     render_background_scrolled(canvas, lb, scroll_y);
     render_borders_scrolled(canvas, lb, scroll_y);
     // img placeholder: paint grey box + alt text, skip normal text render.
@@ -117,7 +125,13 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
                 let mut pen_x_f: f32 = origin_x + item.x;
                 for ch in item.text.chars() {
                     let glyph = item_font.rasterize_cached(ch);
-                    blit_glyph(canvas, &glyph, pen_x_f.round() as i32, baseline_y, item.color);
+                    blit_glyph(
+                        canvas,
+                        &glyph,
+                        pen_x_f.round() as i32,
+                        baseline_y,
+                        item.color,
+                    );
                     pen_x_f += glyph.advance_width;
                 }
             }
@@ -132,7 +146,9 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
 
 #[cfg(not(feature = "feather-renderer"))]
 fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
-    if depth >= 512 { return; }
+    if depth >= 512 {
+        return;
+    }
     render_background(canvas, lb);
     render_borders(canvas, lb);
     render_text(canvas, lb);
@@ -143,7 +159,9 @@ fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
 
 fn render_background(canvas: &mut Canvas, lb: &LayoutBox) {
     let color = get_color(lb, "background-color").unwrap_or(CssColor::TRANSPARENT);
-    if color.a == 0 { return; }
+    if color.a == 0 {
+        return;
+    }
     canvas.fill_rect(lb.dimensions.border_box(), color);
 }
 
@@ -154,10 +172,42 @@ fn render_borders(canvas: &mut Canvas, lb: &LayoutBox) {
     };
     let d = &lb.dimensions;
     let bb = d.border_box();
-    canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: bb.width, height: d.border.top }, color);
-    canvas.fill_rect(Rect { x: bb.x, y: bb.y + bb.height - d.border.bottom, width: bb.width, height: d.border.bottom }, color);
-    canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: d.border.left, height: bb.height }, color);
-    canvas.fill_rect(Rect { x: bb.x + bb.width - d.border.right, y: bb.y, width: d.border.right, height: bb.height }, color);
+    canvas.fill_rect(
+        Rect {
+            x: bb.x,
+            y: bb.y,
+            width: bb.width,
+            height: d.border.top,
+        },
+        color,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: bb.x,
+            y: bb.y + bb.height - d.border.bottom,
+            width: bb.width,
+            height: d.border.bottom,
+        },
+        color,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: bb.x,
+            y: bb.y,
+            width: d.border.left,
+            height: bb.height,
+        },
+        color,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: bb.x + bb.width - d.border.right,
+            y: bb.y,
+            width: d.border.right,
+            height: bb.height,
+        },
+        color,
+    );
 }
 
 fn render_text(canvas: &mut Canvas, lb: &LayoutBox) {
@@ -176,14 +226,24 @@ fn render_text(canvas: &mut Canvas, lb: &LayoutBox) {
 }
 
 #[cfg(feature = "feather-renderer")]
-pub fn blit_glyph(canvas: &mut Canvas, glyph: &GlyphBitmap, x: i32, baseline_y: i32, color: CssColor) {
+pub fn blit_glyph(
+    canvas: &mut Canvas,
+    glyph: &GlyphBitmap,
+    x: i32,
+    baseline_y: i32,
+    color: CssColor,
+) {
     for gy in 0..glyph.height {
         for gx in 0..glyph.width {
             let alpha = glyph.pixels[gy * glyph.width + gx];
-            if alpha == 0 { continue; }
+            if alpha == 0 {
+                continue;
+            }
             let cx = x + glyph.bearing_x + gx as i32;
             let cy = baseline_y - glyph.bearing_y + gy as i32;
-            if cx < 0 || cy < 0 { continue; }
+            if cx < 0 || cy < 0 {
+                continue;
+            }
             let alpha_f = alpha as f32 / 255.0;
             let blended = CssColor {
                 r: (color.r as f32 * alpha_f + 255.0 * (1.0 - alpha_f)) as u8,
@@ -199,7 +259,9 @@ pub fn blit_glyph(canvas: &mut Canvas, glyph: &GlyphBitmap, x: i32, baseline_y: 
 #[cfg(feature = "feather-renderer")]
 fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
     let color = get_color(lb, "background-color").unwrap_or(CssColor::TRANSPARENT);
-    if color.a == 0 { return; }
+    if color.a == 0 {
+        return;
+    }
     let mut rect = lb.dimensions.border_box();
     rect.y -= scroll_y;
     canvas.fill_rect(rect, color);
@@ -214,10 +276,42 @@ fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
     let d = &lb.dimensions;
     let mut bb = d.border_box();
     bb.y -= scroll_y;
-    canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: bb.width, height: d.border.top }, color);
-    canvas.fill_rect(Rect { x: bb.x, y: bb.y + bb.height - d.border.bottom, width: bb.width, height: d.border.bottom }, color);
-    canvas.fill_rect(Rect { x: bb.x, y: bb.y, width: d.border.left, height: bb.height }, color);
-    canvas.fill_rect(Rect { x: bb.x + bb.width - d.border.right, y: bb.y, width: d.border.right, height: bb.height }, color);
+    canvas.fill_rect(
+        Rect {
+            x: bb.x,
+            y: bb.y,
+            width: bb.width,
+            height: d.border.top,
+        },
+        color,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: bb.x,
+            y: bb.y + bb.height - d.border.bottom,
+            width: bb.width,
+            height: d.border.bottom,
+        },
+        color,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: bb.x,
+            y: bb.y,
+            width: d.border.left,
+            height: bb.height,
+        },
+        color,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: bb.x + bb.width - d.border.right,
+            y: bb.y,
+            width: d.border.right,
+            height: bb.height,
+        },
+        color,
+    );
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -231,24 +325,69 @@ fn is_img_element(lb: &LayoutBox) -> bool {
 }
 
 #[cfg(feature = "feather-renderer")]
-fn render_img_placeholder(
-    canvas: &mut Canvas,
-    lb: &LayoutBox,
-    scroll_y: f32,
-    font: &FontMetrics,
-) {
+fn render_img_placeholder(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, font: &FontMetrics) {
     let c = lb.dimensions.content;
-    let grey = CssColor { r: 180, g: 180, b: 180, a: 255 };
-    let border_col = CssColor { r: 140, g: 140, b: 140, a: 255 };
+    let grey = CssColor {
+        r: 180,
+        g: 180,
+        b: 180,
+        a: 255,
+    };
+    let border_col = CssColor {
+        r: 140,
+        g: 140,
+        b: 140,
+        a: 255,
+    };
     let y = c.y - scroll_y;
 
     // grey fill
-    canvas.fill_rect(Rect { x: c.x, y, width: c.width, height: c.height }, grey);
+    canvas.fill_rect(
+        Rect {
+            x: c.x,
+            y,
+            width: c.width,
+            height: c.height,
+        },
+        grey,
+    );
     // 1-px border
-    canvas.fill_rect(Rect { x: c.x, y, width: c.width, height: 1.0 }, border_col);
-    canvas.fill_rect(Rect { x: c.x, y: y + c.height - 1.0, width: c.width, height: 1.0 }, border_col);
-    canvas.fill_rect(Rect { x: c.x, y, width: 1.0, height: c.height }, border_col);
-    canvas.fill_rect(Rect { x: c.x + c.width - 1.0, y, width: 1.0, height: c.height }, border_col);
+    canvas.fill_rect(
+        Rect {
+            x: c.x,
+            y,
+            width: c.width,
+            height: 1.0,
+        },
+        border_col,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: c.x,
+            y: y + c.height - 1.0,
+            width: c.width,
+            height: 1.0,
+        },
+        border_col,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: c.x,
+            y,
+            width: 1.0,
+            height: c.height,
+        },
+        border_col,
+    );
+    canvas.fill_rect(
+        Rect {
+            x: c.x + c.width - 1.0,
+            y,
+            width: 1.0,
+            height: c.height,
+        },
+        border_col,
+    );
 
     // centered alt text
     if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
@@ -258,11 +397,18 @@ fn render_img_placeholder(
                     let fm = FontMetrics::load_cached(12.0);
                     let text_w = fm.measure_str(alt);
                     let pen_start_x = c.x + ((c.width - text_w) / 2.0).max(0.0);
-                    let baseline_y = (y + (c.height - fm.line_height) / 2.0 + fm.ascent).round() as i32;
+                    let baseline_y =
+                        (y + (c.height - fm.line_height) / 2.0 + fm.ascent).round() as i32;
                     let mut pen_x = pen_start_x;
                     for ch in alt.chars() {
                         let glyph = fm.rasterize_cached(ch);
-                        blit_glyph(canvas, &glyph, pen_x.round() as i32, baseline_y, CssColor::DARK);
+                        blit_glyph(
+                            canvas,
+                            &glyph,
+                            pen_x.round() as i32,
+                            baseline_y,
+                            CssColor::DARK,
+                        );
                         pen_x += glyph.advance_width;
                     }
                 }

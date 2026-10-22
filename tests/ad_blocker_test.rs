@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 use feather::features::ad_blocker::AdBlocker;
-use tempfile::TempDir;
 use std::fs;
+use tempfile::TempDir;
 
 #[test]
 fn test_known_ad_domain_is_blocked() {
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("blocklist.txt");
-    fs::write(&path, "0.0.0.0 doubleclick.net\n0.0.0.0 googleadservices.com\n").unwrap();
+    fs::write(
+        &path,
+        "0.0.0.0 doubleclick.net\n0.0.0.0 googleadservices.com\n",
+    )
+    .unwrap();
     let blocker = AdBlocker::load(path.to_str().unwrap());
     assert!(blocker.is_blocked("https://doubleclick.net/ad/123"));
     assert!(blocker.is_blocked("https://googleadservices.com/pagead/"));

@@ -10,8 +10,10 @@ impl AddressBarLogic {
     /// - Falls back to DuckDuckGo search for everything else
     pub fn clean_url(input: &str) -> String {
         let trimmed = input.trim();
-        if trimmed.starts_with("https://") || trimmed.starts_with("http://")
-            || trimmed.starts_with("about:") || trimmed.starts_with("file://")
+        if trimmed.starts_with("https://")
+            || trimmed.starts_with("http://")
+            || trimmed.starts_with("about:")
+            || trimmed.starts_with("file://")
         {
             return trimmed.to_string();
         }

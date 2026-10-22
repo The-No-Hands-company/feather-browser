@@ -3,9 +3,9 @@ use feather::engine::css::CssParser;
 
 #[cfg(feature = "feather-renderer")]
 mod renderer_tests {
-    use feather::engine::css::{CssParser, Value, Unit, CssColor};
-    use feather::engine::style::style_tree;
+    use feather::engine::css::{CssColor, CssParser, Unit, Value};
     use feather::engine::dom::{Node, NodeType};
+    use feather::engine::style::style_tree;
     use std::collections::HashMap;
 
     #[test]
@@ -31,7 +31,11 @@ mod renderer_tests {
         let sheet = CssParser::parse("span { color: red; }");
         let value = &sheet.rules[0].declarations[0].1;
         match value {
-            Value::Color(c) => { assert_eq!(c.r, 255); assert_eq!(c.g, 0); assert_eq!(c.b, 0); }
+            Value::Color(c) => {
+                assert_eq!(c.r, 255);
+                assert_eq!(c.g, 0);
+                assert_eq!(c.b, 0);
+            }
             Value::Keyword(k) => assert_eq!(k, "red"), // acceptable: caller resolves
             _ => panic!("unexpected value type"),
         }
@@ -46,7 +50,9 @@ mod renderer_tests {
     #[test]
     fn test_parse_class_selector() {
         let sheet = CssParser::parse(".btn { padding: 8px; }");
-        assert!(sheet.rules[0].selectors[0].classes.contains(&"btn".to_string()));
+        assert!(sheet.rules[0].selectors[0]
+            .classes
+            .contains(&"btn".to_string()));
     }
 
     #[test]
@@ -78,91 +84,154 @@ mod renderer_tests {
     #[test]
     fn test_margin_shorthand_1_value() {
         let sheet = CssParser::parse("p { margin: 10px }");
-        let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
-        assert_eq!(decls.get("margin-top"),    Some(&Value::Length(10.0, Unit::Px)));
-        assert_eq!(decls.get("margin-right"),  Some(&Value::Length(10.0, Unit::Px)));
-        assert_eq!(decls.get("margin-bottom"), Some(&Value::Length(10.0, Unit::Px)));
-        assert_eq!(decls.get("margin-left"),   Some(&Value::Length(10.0, Unit::Px)));
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(
+            decls.get("margin-top"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("margin-right"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("margin-bottom"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("margin-left"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
     }
 
     #[test]
     fn test_margin_shorthand_2_values() {
         let sheet = CssParser::parse("p { margin: 10px 20px }");
-        let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
-        assert_eq!(decls.get("margin-top"),    Some(&Value::Length(10.0, Unit::Px)));
-        assert_eq!(decls.get("margin-right"),  Some(&Value::Length(20.0, Unit::Px)));
-        assert_eq!(decls.get("margin-bottom"), Some(&Value::Length(10.0, Unit::Px)));
-        assert_eq!(decls.get("margin-left"),   Some(&Value::Length(20.0, Unit::Px)));
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(
+            decls.get("margin-top"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("margin-right"),
+            Some(&Value::Length(20.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("margin-bottom"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("margin-left"),
+            Some(&Value::Length(20.0, Unit::Px))
+        );
     }
 
     #[test]
     fn test_padding_shorthand_4_values() {
         let sheet = CssParser::parse("div { padding: 1px 2px 3px 4px }");
-        let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
-        assert_eq!(decls.get("padding-top"),    Some(&Value::Length(1.0, Unit::Px)));
-        assert_eq!(decls.get("padding-right"),  Some(&Value::Length(2.0, Unit::Px)));
-        assert_eq!(decls.get("padding-bottom"), Some(&Value::Length(3.0, Unit::Px)));
-        assert_eq!(decls.get("padding-left"),   Some(&Value::Length(4.0, Unit::Px)));
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(
+            decls.get("padding-top"),
+            Some(&Value::Length(1.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("padding-right"),
+            Some(&Value::Length(2.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("padding-bottom"),
+            Some(&Value::Length(3.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("padding-left"),
+            Some(&Value::Length(4.0, Unit::Px))
+        );
     }
 
     #[test]
     fn test_font_shorthand_extracts_size() {
         let sheet = CssParser::parse("p { font: bold 18px sans-serif }");
-        let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
         assert_eq!(decls.get("font-size"), Some(&Value::Length(18.0, Unit::Px)));
     }
 
     #[test]
     fn test_longhand_still_works() {
         let sheet = CssParser::parse("p { margin-top: 5px }");
-        let decls: std::collections::HashMap<_, _> = sheet.rules[0].declarations.iter().cloned().collect();
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
         assert_eq!(decls.get("margin-top"), Some(&Value::Length(5.0, Unit::Px)));
     }
 }
 
 #[test]
 fn test_descendant_selector_matches() {
+    use feather::engine::css::Value;
     use feather::engine::html::HtmlParser;
     use feather::engine::style::style_tree;
-    use feather::engine::css::Value;
 
     let dom = HtmlParser::parse("<div><p>hello</p></div>");
     let sheet = CssParser::parse("div p { color: red }");
     let tree = style_tree(&dom.root, &sheet);
     // tree.children[0] = <html>, descend to find <p>
-    fn find_tag<'a>(node: &'a feather::engine::style::StyledNode, tag: &str)
-        -> Option<&'a feather::engine::style::StyledNode>
-    {
+    fn find_tag<'a>(
+        node: &'a feather::engine::style::StyledNode,
+        tag: &str,
+    ) -> Option<&'a feather::engine::style::StyledNode> {
         use feather::engine::dom::NodeType;
         if let NodeType::Element(e) = &node.node.node_type {
-            if e.tag_name == tag { return Some(node); }
+            if e.tag_name == tag {
+                return Some(node);
+            }
         }
         node.children.iter().find_map(|c| find_tag(c, tag))
     }
     let p = find_tag(&tree, "p").expect("<p> must exist");
-    assert_eq!(p.properties.get("color"), Some(&Value::Color(feather::engine::css::CssColor { r:255, g:0, b:0, a:255 })));
+    assert_eq!(
+        p.properties.get("color"),
+        Some(&Value::Color(feather::engine::css::CssColor {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255
+        }))
+    );
 }
 
 #[test]
 fn test_child_selector_matches_direct_child() {
+    use feather::engine::css::Value;
     use feather::engine::html::HtmlParser;
     use feather::engine::style::style_tree;
-    use feather::engine::css::Value;
 
     let dom = HtmlParser::parse("<div><p>hello</p></div>");
     let sheet = CssParser::parse("div > p { color: blue }");
     let tree = style_tree(&dom.root, &sheet);
-    fn find_tag<'a>(node: &'a feather::engine::style::StyledNode, tag: &str)
-        -> Option<&'a feather::engine::style::StyledNode>
-    {
+    fn find_tag<'a>(
+        node: &'a feather::engine::style::StyledNode,
+        tag: &str,
+    ) -> Option<&'a feather::engine::style::StyledNode> {
         use feather::engine::dom::NodeType;
         if let NodeType::Element(e) = &node.node.node_type {
-            if e.tag_name == tag { return Some(node); }
+            if e.tag_name == tag {
+                return Some(node);
+            }
         }
         node.children.iter().find_map(|c| find_tag(c, tag))
     }
     let p = find_tag(&tree, "p").expect("<p> must exist");
-    assert_eq!(p.properties.get("color"), Some(&Value::Color(feather::engine::css::CssColor { r:0, g:0, b:255, a:255 })));
+    assert_eq!(
+        p.properties.get("color"),
+        Some(&Value::Color(feather::engine::css::CssColor {
+            r: 0,
+            g: 0,
+            b: 255,
+            a: 255
+        }))
+    );
 }
 
 #[test]
@@ -173,12 +242,15 @@ fn test_child_selector_does_not_match_grandchild() {
     let dom = HtmlParser::parse("<div><section><p>hello</p></section></div>");
     let sheet = CssParser::parse("div > p { color: red }");
     let tree = style_tree(&dom.root, &sheet);
-    fn find_tag<'a>(node: &'a feather::engine::style::StyledNode, tag: &str)
-        -> Option<&'a feather::engine::style::StyledNode>
-    {
+    fn find_tag<'a>(
+        node: &'a feather::engine::style::StyledNode,
+        tag: &str,
+    ) -> Option<&'a feather::engine::style::StyledNode> {
         use feather::engine::dom::NodeType;
         if let NodeType::Element(e) = &node.node.node_type {
-            if e.tag_name == tag { return Some(node); }
+            if e.tag_name == tag {
+                return Some(node);
+            }
         }
         node.children.iter().find_map(|c| find_tag(c, tag))
     }
@@ -202,9 +274,9 @@ fn test_deep_selector_chain_no_panic() {
 fn test_descendant_selector_matches_with_intermediate_element() {
     // "div span" should match a span inside a section inside a div
     use feather::engine::css::CssParser;
+    use feather::engine::css::{CssColor, Value};
     use feather::engine::dom::{ElementData, Node, NodeType};
     use feather::engine::style::style_tree;
-    use feather::engine::css::{CssColor, Value};
     use std::collections::HashMap;
 
     let css = CssParser::parse("div span { color: red }");
@@ -236,7 +308,12 @@ fn test_descendant_selector_matches_with_intermediate_element() {
     let span_styled = &styled.children[0].children[0];
     assert_eq!(
         span_styled.properties.get("color"),
-        Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+        Some(&Value::Color(CssColor {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255
+        })),
         "div span selector must match span nested inside section inside div"
     );
 }
@@ -294,13 +371,21 @@ fn test_mixed_child_descendant_backtracks_to_outer_ancestor() {
     }
 
     let css = CssParser::parse("p > a b { color: red }");
-    let dom = el("p", vec![el("a", vec![el("x", vec![el("a", vec![el("b", vec![])])])])]);
+    let dom = el(
+        "p",
+        vec![el("a", vec![el("x", vec![el("a", vec![el("b", vec![])])])])],
+    );
     let styled = style_tree(&dom, &css);
     // styled: p -> a -> x -> a -> b
     let b_styled = &styled.children[0].children[0].children[0].children[0];
     assert_eq!(
         b_styled.properties.get("color"),
-        Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+        Some(&Value::Color(CssColor {
+            r: 255,
+            g: 0,
+            b: 0,
+            a: 255
+        })),
         "p > a b must match b whose outer a is a direct child of p"
     );
 }
@@ -311,7 +396,9 @@ mod border_shorthand_tests {
 
     fn parse_decls(css: &str) -> std::collections::HashMap<String, Value> {
         let sheet = CssParser::parse(css);
-        sheet.rules.into_iter()
+        sheet
+            .rules
+            .into_iter()
             .flat_map(|r| r.declarations)
             .collect()
     }
@@ -319,26 +406,61 @@ mod border_shorthand_tests {
     #[test]
     fn test_border_shorthand_expands_width_and_color() {
         let decls = parse_decls("div { border: 2px solid black; }");
-        assert_eq!(decls.get("border-top-width"),    Some(&Value::Length(2.0, Unit::Px)));
-        assert_eq!(decls.get("border-right-width"),  Some(&Value::Length(2.0, Unit::Px)));
-        assert_eq!(decls.get("border-bottom-width"), Some(&Value::Length(2.0, Unit::Px)));
-        assert_eq!(decls.get("border-left-width"),   Some(&Value::Length(2.0, Unit::Px)));
-        assert_eq!(decls.get("border-color"),        Some(&Value::Color(CssColor::BLACK)));
+        assert_eq!(
+            decls.get("border-top-width"),
+            Some(&Value::Length(2.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("border-right-width"),
+            Some(&Value::Length(2.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("border-bottom-width"),
+            Some(&Value::Length(2.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("border-left-width"),
+            Some(&Value::Length(2.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("border-color"),
+            Some(&Value::Color(CssColor::BLACK))
+        );
     }
 
     #[test]
     fn test_border_shorthand_no_color() {
         let decls = parse_decls("div { border: 3px solid; }");
-        assert_eq!(decls.get("border-top-width"), Some(&Value::Length(3.0, Unit::Px)));
-        assert!(decls.get("border-color").is_none(), "no color in shorthand → no border-color entry");
+        assert_eq!(
+            decls.get("border-top-width"),
+            Some(&Value::Length(3.0, Unit::Px))
+        );
+        assert!(
+            decls.get("border-color").is_none(),
+            "no color in shorthand → no border-color entry"
+        );
     }
 
     #[test]
     fn test_border_side_shorthand() {
         let decls = parse_decls("div { border-left: 1px solid red; }");
-        assert_eq!(decls.get("border-left-width"), Some(&Value::Length(1.0, Unit::Px)));
-        assert_eq!(decls.get("border-color"),      Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })));
-        assert!(decls.get("border-top-width").is_none(), "side shorthand must not set other sides");
+        assert_eq!(
+            decls.get("border-left-width"),
+            Some(&Value::Length(1.0, Unit::Px))
+        );
+        assert_eq!(
+            decls.get("border-color"),
+            Some(&Value::Color(CssColor {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 255
+            }))
+        );
+        assert!(
+            decls.get("border-top-width").is_none(),
+            "side shorthand must not set other sides"
+        );
     }
 }
 
@@ -355,31 +477,143 @@ mod named_color_tests {
 
     #[test]
     fn test_named_colors_css_level1() {
-        assert_eq!(parse_color("navy"),   Some(CssColor { r: 0,   g: 0,   b: 128, a: 255 }));
-        assert_eq!(parse_color("teal"),   Some(CssColor { r: 0,   g: 128, b: 128, a: 255 }));
-        assert_eq!(parse_color("maroon"), Some(CssColor { r: 128, g: 0,   b: 0,   a: 255 }));
-        assert_eq!(parse_color("olive"),  Some(CssColor { r: 128, g: 128, b: 0,   a: 255 }));
-        assert_eq!(parse_color("silver"), Some(CssColor { r: 192, g: 192, b: 192, a: 255 }));
-        assert_eq!(parse_color("lime"),   Some(CssColor { r: 0,   g: 255, b: 0,   a: 255 }));
+        assert_eq!(
+            parse_color("navy"),
+            Some(CssColor {
+                r: 0,
+                g: 0,
+                b: 128,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("teal"),
+            Some(CssColor {
+                r: 0,
+                g: 128,
+                b: 128,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("maroon"),
+            Some(CssColor {
+                r: 128,
+                g: 0,
+                b: 0,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("olive"),
+            Some(CssColor {
+                r: 128,
+                g: 128,
+                b: 0,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("silver"),
+            Some(CssColor {
+                r: 192,
+                g: 192,
+                b: 192,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("lime"),
+            Some(CssColor {
+                r: 0,
+                g: 255,
+                b: 0,
+                a: 255
+            })
+        );
     }
 
     #[test]
     fn test_named_colors_aliases() {
-        assert_eq!(parse_color("cyan"),      parse_color("aqua"),      "cyan == aqua");
-        assert_eq!(parse_color("magenta"),   parse_color("fuchsia"),   "magenta == fuchsia");
-        assert_eq!(parse_color("gray"),      parse_color("grey"),      "gray == grey");
-        assert_eq!(parse_color("lightgray"), parse_color("lightgrey"), "lightgray == lightgrey");
-        assert_eq!(parse_color("darkgray"),  parse_color("darkgrey"),  "darkgray == darkgrey");
-        assert_eq!(parse_color("slategray"), parse_color("slategrey"), "slategray == slategrey");
+        assert_eq!(parse_color("cyan"), parse_color("aqua"), "cyan == aqua");
+        assert_eq!(
+            parse_color("magenta"),
+            parse_color("fuchsia"),
+            "magenta == fuchsia"
+        );
+        assert_eq!(parse_color("gray"), parse_color("grey"), "gray == grey");
+        assert_eq!(
+            parse_color("lightgray"),
+            parse_color("lightgrey"),
+            "lightgray == lightgrey"
+        );
+        assert_eq!(
+            parse_color("darkgray"),
+            parse_color("darkgrey"),
+            "darkgray == darkgrey"
+        );
+        assert_eq!(
+            parse_color("slategray"),
+            parse_color("slategrey"),
+            "slategray == slategrey"
+        );
     }
 
     #[test]
     fn test_named_colors_extended() {
-        assert_eq!(parse_color("coral"),   Some(CssColor { r: 255, g: 127, b: 80,  a: 255 }));
-        assert_eq!(parse_color("crimson"), Some(CssColor { r: 220, g: 20,  b: 60,  a: 255 }));
-        assert_eq!(parse_color("gold"),    Some(CssColor { r: 255, g: 215, b: 0,   a: 255 }));
-        assert_eq!(parse_color("hotpink"), Some(CssColor { r: 255, g: 105, b: 180, a: 255 }));
-        assert_eq!(parse_color("tomato"),  Some(CssColor { r: 255, g: 99,  b: 71,  a: 255 }));
-        assert_eq!(parse_color("indigo"),  Some(CssColor { r: 75,  g: 0,   b: 130, a: 255 }));
+        assert_eq!(
+            parse_color("coral"),
+            Some(CssColor {
+                r: 255,
+                g: 127,
+                b: 80,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("crimson"),
+            Some(CssColor {
+                r: 220,
+                g: 20,
+                b: 60,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("gold"),
+            Some(CssColor {
+                r: 255,
+                g: 215,
+                b: 0,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("hotpink"),
+            Some(CssColor {
+                r: 255,
+                g: 105,
+                b: 180,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("tomato"),
+            Some(CssColor {
+                r: 255,
+                g: 99,
+                b: 71,
+                a: 255
+            })
+        );
+        assert_eq!(
+            parse_color("indigo"),
+            Some(CssColor {
+                r: 75,
+                g: 0,
+                b: 130,
+                a: 255
+            })
+        );
     }
 }

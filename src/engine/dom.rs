@@ -26,7 +26,10 @@ pub struct Node {
 impl Node {
     pub fn element(tag_name: String, attributes: HashMap<String, String>) -> Self {
         Self {
-            node_type: NodeType::Element(ElementData { tag_name, attributes }),
+            node_type: NodeType::Element(ElementData {
+                tag_name,
+                attributes,
+            }),
             children: Vec::new(),
         }
     }

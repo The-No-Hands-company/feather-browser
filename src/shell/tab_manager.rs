@@ -38,7 +38,11 @@ pub struct TabManager {
 
 impl TabManager {
     pub fn new() -> Self {
-        Self { tabs: Vec::new(), active_id: None, next_id: 1 }
+        Self {
+            tabs: Vec::new(),
+            active_id: None,
+            next_id: 1,
+        }
     }
 
     /// Adds a new tab, makes it active, returns its id.

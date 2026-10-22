@@ -94,8 +94,14 @@ fn test_clean_url_adds_https_scheme() {
 
 #[test]
 fn test_clean_url_preserves_existing_scheme() {
-    assert_eq!(AddressBarLogic::clean_url("https://tnhc.dev"), "https://tnhc.dev");
-    assert_eq!(AddressBarLogic::clean_url("http://tnhc.dev"), "http://tnhc.dev");
+    assert_eq!(
+        AddressBarLogic::clean_url("https://tnhc.dev"),
+        "https://tnhc.dev"
+    );
+    assert_eq!(
+        AddressBarLogic::clean_url("http://tnhc.dev"),
+        "http://tnhc.dev"
+    );
 }
 
 #[test]
@@ -107,5 +113,8 @@ fn test_clean_url_treats_plain_text_as_search() {
 
 #[test]
 fn test_clean_url_trims_whitespace() {
-    assert_eq!(AddressBarLogic::clean_url("  https://tnhc.dev  "), "https://tnhc.dev");
+    assert_eq!(
+        AddressBarLogic::clean_url("  https://tnhc.dev  "),
+        "https://tnhc.dev"
+    );
 }

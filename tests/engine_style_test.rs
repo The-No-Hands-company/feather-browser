@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #[cfg(feature = "feather-renderer")]
 mod style_tests {
+    use feather::engine::dom::NodeType;
     use feather::engine::{
         css::{CssColor, CssParser, Unit, Value},
         html::HtmlParser,
         style::{style_tree, StyledNode},
     };
-    use feather::engine::dom::NodeType;
 
     /// Depth-first search: first node whose element tag matches `tag`.
     fn find_by_tag<'a>(node: &'a StyledNode, tag: &str) -> Option<&'a StyledNode> {
         if let NodeType::Element(e) = &node.node.node_type {
-            if e.tag_name == tag { return Some(node); }
+            if e.tag_name == tag {
+                return Some(node);
+            }
         }
         for child in &node.children {
             if let Some(found) = find_by_tag(child, tag) {
@@ -29,7 +31,12 @@ mod style_tests {
         let span = find_by_tag(&styled, "span").expect("span not found");
         assert_eq!(
             span.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 255
+            })),
             "span should inherit color: red from its div parent"
         );
     }
@@ -55,7 +62,12 @@ mod style_tests {
         let span = find_by_tag(&styled, "span").expect("span not found");
         assert_eq!(
             span.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255
+            })),
             "span's explicit color: blue should override inherited color: red"
         );
     }
@@ -84,7 +96,12 @@ mod style_tests {
         let span = find_by_tag(&styled, "span").expect("span not found");
         assert_eq!(
             span.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255
+            })),
             "span should inherit color: blue through p from its grandparent div"
         );
     }
@@ -178,10 +195,14 @@ mod selector_tests {
     fn find_by_tag<'a>(node: &'a StyledNode, tag: &str) -> Option<&'a StyledNode> {
         use feather::engine::dom::NodeType;
         if let NodeType::Element(e) = &node.node.node_type {
-            if e.tag_name == tag { return Some(node); }
+            if e.tag_name == tag {
+                return Some(node);
+            }
         }
         for child in &node.children {
-            if let Some(found) = find_by_tag(child, tag) { return Some(found); }
+            if let Some(found) = find_by_tag(child, tag) {
+                return Some(found);
+            }
         }
         None
     }
@@ -190,10 +211,14 @@ mod selector_tests {
         use feather::engine::dom::NodeType;
         if let NodeType::Element(e) = &node.node.node_type {
             let classes = e.attributes.get("class").map(|s| s.as_str()).unwrap_or("");
-            if classes.split_whitespace().any(|c| c == class) { return Some(node); }
+            if classes.split_whitespace().any(|c| c == class) {
+                return Some(node);
+            }
         }
         for child in &node.children {
-            if let Some(found) = find_by_class(child, class) { return Some(found); }
+            if let Some(found) = find_by_class(child, class) {
+                return Some(found);
+            }
         }
         None
     }
@@ -201,10 +226,14 @@ mod selector_tests {
     fn find_by_id<'a>(node: &'a StyledNode, id: &str) -> Option<&'a StyledNode> {
         use feather::engine::dom::NodeType;
         if let NodeType::Element(e) = &node.node.node_type {
-            if e.attributes.get("id").map(|s| s.as_str()) == Some(id) { return Some(node); }
+            if e.attributes.get("id").map(|s| s.as_str()) == Some(id) {
+                return Some(node);
+            }
         }
         for child in &node.children {
-            if let Some(found) = find_by_id(child, id) { return Some(found); }
+            if let Some(found) = find_by_id(child, id) {
+                return Some(found);
+            }
         }
         None
     }
@@ -217,7 +246,12 @@ mod selector_tests {
         let foo_p = find_by_class(&styled, "foo").expect("p.foo not found");
         assert_eq!(
             foo_p.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 255
+            })),
             "p.foo must have color: red"
         );
         fn find_plain_p(node: &StyledNode) -> Option<&StyledNode> {
@@ -225,18 +259,27 @@ mod selector_tests {
             if let NodeType::Element(e) = &node.node.node_type {
                 if e.tag_name == "p" {
                     let classes = e.attributes.get("class").map(|s| s.as_str()).unwrap_or("");
-                    if !classes.split_whitespace().any(|c| c == "foo") { return Some(node); }
+                    if !classes.split_whitespace().any(|c| c == "foo") {
+                        return Some(node);
+                    }
                 }
             }
             for child in &node.children {
-                if let Some(found) = find_plain_p(child) { return Some(found); }
+                if let Some(found) = find_plain_p(child) {
+                    return Some(found);
+                }
             }
             None
         }
         let plain_p = find_plain_p(&styled).expect("plain p not found");
         assert_ne!(
             plain_p.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 255,
+                g: 0,
+                b: 0,
+                a: 255
+            })),
             "plain p must NOT have color: red"
         );
     }
@@ -249,7 +292,12 @@ mod selector_tests {
         let bar_p = find_by_id(&styled, "bar").expect("#bar not found");
         assert_eq!(
             bar_p.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 0,
+                g: 0,
+                b: 255,
+                a: 255
+            })),
             "#bar must have color: blue"
         );
     }
@@ -263,7 +311,12 @@ mod selector_tests {
         let inside_p = find_by_tag(div_node, "p").expect("p inside div not found");
         assert_eq!(
             inside_p.properties.get("color"),
-            Some(&Value::Color(CssColor { r: 0, g: 128, b: 0, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 0,
+                g: 128,
+                b: 0,
+                a: 255
+            })),
             "p inside div must have color: green"
         );
     }
@@ -278,13 +331,23 @@ mod selector_tests {
         let p_node = find_by_tag(div_node, "p").expect("p not found");
         assert_eq!(
             p_node.properties.get("background-color"),
-            Some(&Value::Color(CssColor { r: 255, g: 165, b: 0, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 255,
+                g: 165,
+                b: 0,
+                a: 255
+            })),
             "direct child p must have background-color: orange"
         );
         let span_node = find_by_tag(&styled, "span").expect("span not found");
         assert_ne!(
             span_node.properties.get("background-color"),
-            Some(&Value::Color(CssColor { r: 255, g: 165, b: 0, a: 255 })),
+            Some(&Value::Color(CssColor {
+                r: 255,
+                g: 165,
+                b: 0,
+                a: 255
+            })),
             "grandchild span must NOT have background-color: orange from div > p"
         );
     }

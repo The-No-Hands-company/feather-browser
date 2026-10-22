@@ -104,7 +104,9 @@ impl InlineFormattingContext {
     pub fn layout(&self, items: &[InlineText]) -> (Vec<LineBox>, f32) {
         use crate::engine::font::FontMetrics;
 
-        if items.is_empty() { return (vec![], 0.0); }
+        if items.is_empty() {
+            return (vec![], 0.0);
+        }
 
         let mut lines: Vec<LineBox> = Vec::new();
         let mut current_items: Vec<PlacedInlineItem> = Vec::new();
@@ -120,13 +122,23 @@ impl InlineFormattingContext {
                     let offset = match self.align {
                         TextAlign::Left => 0.0,
                         TextAlign::Center => ((self.available_width - content_w) / 2.0).max(0.0),
-                        TextAlign::Right  => (self.available_width - content_w).max(0.0),
+                        TextAlign::Right => (self.available_width - content_w).max(0.0),
                     };
                     if offset > 0.0 {
-                        for item in &mut current_items { item.x += offset; }
+                        for item in &mut current_items {
+                            item.x += offset;
+                        }
                     }
-                    let lh = if cur_line_height > 0.0 { cur_line_height } else { 16.0 };
-                    let bl = if cur_baseline > 0.0 { cur_baseline } else { 12.8 };
+                    let lh = if cur_line_height > 0.0 {
+                        cur_line_height
+                    } else {
+                        16.0
+                    };
+                    let bl = if cur_baseline > 0.0 {
+                        cur_baseline
+                    } else {
+                        12.8
+                    };
                     lines.push(LineBox {
                         items: std::mem::take(&mut current_items),
                         y: line_y,
@@ -144,14 +156,24 @@ impl InlineFormattingContext {
         for item in items {
             let item_font = FontMetrics::load_cached(item.font_size);
             let words: Vec<&str> = item.text.split_whitespace().collect();
-            if words.is_empty() { continue; }
+            if words.is_empty() {
+                continue;
+            }
             for word in words.iter() {
                 let w = item_font.measure_str(word);
-                let gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
+                let gap = if cursor_x == 0.0 {
+                    0.0
+                } else {
+                    item_font.space_advance
+                };
                 if cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
                     flush_line!();
                 }
-                let actual_gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
+                let actual_gap = if cursor_x == 0.0 {
+                    0.0
+                } else {
+                    item_font.space_advance
+                };
                 let x = cursor_x + actual_gap;
                 current_items.push(PlacedInlineItem {
                     text: word.to_string(),
@@ -219,7 +241,11 @@ impl LayoutEngine {
     }
 
     /// Build a layout tree with explicit viewport dimensions for `vw`/`vh` resolution.
-    pub fn build_with_viewport(root: &StyledNode, containing_width: f32, viewport_height: f32) -> LayoutBox {
+    pub fn build_with_viewport(
+        root: &StyledNode,
+        containing_width: f32,
+        viewport_height: f32,
+    ) -> LayoutBox {
         let mut containing = Dimensions::default();
         containing.content.width = containing_width;
         let mut tree = build_layout_tree(root);
@@ -280,7 +306,9 @@ fn get_display(styled: &StyledNode) -> Option<String> {
 
 fn layout_box(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f32, depth: usize) {
     // Depth cap: prevent stack overflow (Fix 1).
-    if depth >= 512 { return; }
+    if depth >= 512 {
+        return;
+    }
     match lb.box_type.clone() {
         BoxType::Block(_) => layout_block(lb, containing, viewport_height, depth),
         BoxType::Inline(_) => layout_inline(lb, containing),
@@ -293,10 +321,16 @@ fn layout_box(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f32,
 
 fn all_inline_children(children: &[LayoutBox]) -> bool {
     !children.is_empty()
-        && children.iter().all(|c| matches!(c.box_type, BoxType::Anonymous | BoxType::Inline(_)))
+        && children
+            .iter()
+            .all(|c| matches!(c.box_type, BoxType::Anonymous | BoxType::Inline(_)))
 }
 
-fn collect_inline_text(children: &[LayoutBox], parent_font_size: f32, parent_color: CssColor) -> Vec<InlineText> {
+fn collect_inline_text(
+    children: &[LayoutBox],
+    parent_font_size: f32,
+    parent_color: CssColor,
+) -> Vec<InlineText> {
     let mut items = Vec::new();
     for child in children {
         match &child.box_type {
@@ -337,7 +371,11 @@ fn collect_text_from_layout_children(
     for child in children {
         if let Some(t) = &child.text {
             if !t.trim().is_empty() {
-                out.push(InlineText { text: t.clone(), color, font_size });
+                out.push(InlineText {
+                    text: t.clone(),
+                    color,
+                    font_size,
+                });
             }
         }
         collect_text_from_layout_children(&child.children, color, font_size, out);
@@ -351,11 +389,15 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
     if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
         if let NodeType::Element(e) = &s.node.node_type {
             if e.tag_name == "img" {
-                let w = e.attributes.get("width")
+                let w = e
+                    .attributes
+                    .get("width")
                     .and_then(|v| v.parse::<f32>().ok())
                     .filter(|v| v.is_finite() && *v >= 0.0)
                     .unwrap_or(100.0);
-                let h = e.attributes.get("height")
+                let h = e
+                    .attributes
+                    .get("height")
                     .and_then(|v| v.parse::<f32>().ok())
                     .filter(|v| v.is_finite() && *v >= 0.0)
                     .unwrap_or(50.0);
@@ -386,8 +428,8 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("text-align") {
                     Some(Value::Keyword(k)) => match k.as_str() {
                         "center" => TextAlign::Center,
-                        "right"  => TextAlign::Right,
-                        _        => TextAlign::Left,
+                        "right" => TextAlign::Right,
+                        _ => TextAlign::Left,
                     },
                     _ => TextAlign::Left,
                 },
@@ -426,10 +468,10 @@ fn calculate_block_width(lb: &mut LayoutBox, containing: &Dimensions, viewport_h
 
     // Check if width is explicitly set
     let explicit_width = match styled.properties.get("width") {
-        Some(Value::Length(n, Unit::Px))      => Some(*n),
+        Some(Value::Length(n, Unit::Px)) => Some(*n),
         Some(Value::Length(n, Unit::Percent)) => Some(*n / 100.0 * cw),
-        Some(Value::Length(n, Unit::Vw))      => Some(*n / 100.0 * cw),
-        Some(Value::Length(n, Unit::Vh))      => Some(*n / 100.0 * viewport_height),
+        Some(Value::Length(n, Unit::Vw)) => Some(*n / 100.0 * cw),
+        Some(Value::Length(n, Unit::Vh)) => Some(*n / 100.0 * viewport_height),
         _ => None,
     };
 
@@ -444,17 +486,21 @@ fn calculate_block_width(lb: &mut LayoutBox, containing: &Dimensions, viewport_h
 
     // min-width clamps up, max-width clamps down
     let min_w = match styled.properties.get("min-width") {
-        Some(Value::Length(n, Unit::Px))      => Some(*n),
+        Some(Value::Length(n, Unit::Px)) => Some(*n),
         Some(Value::Length(n, Unit::Percent)) => Some(*n / 100.0 * cw),
         _ => None,
     };
     let max_w = match styled.properties.get("max-width") {
-        Some(Value::Length(n, Unit::Px))      => Some(*n),
+        Some(Value::Length(n, Unit::Px)) => Some(*n),
         Some(Value::Length(n, Unit::Percent)) => Some(*n / 100.0 * cw),
         _ => None,
     };
-    if let Some(min) = min_w { width = width.max(min); }
-    if let Some(max) = max_w { width = width.min(max); }
+    if let Some(min) = min_w {
+        width = width.max(min);
+    }
+    if let Some(max) = max_w {
+        width = width.min(max);
+    }
 
     lb.dimensions.content.width = width;
     lb.dimensions.margin.left = margin_left;
@@ -499,10 +545,18 @@ fn layout_block_children(lb: &mut LayoutBox, viewport_height: f32, depth: usize)
 fn calculate_block_height(lb: &mut LayoutBox, viewport_height: f32, containing_width: f32) {
     if let BoxType::Block(s) = &lb.box_type {
         match s.properties.get("height") {
-            Some(Value::Length(h, Unit::Px))      => { lb.dimensions.content.height = *h; }
-            Some(Value::Length(h, Unit::Vh))      => { lb.dimensions.content.height = *h / 100.0 * viewport_height; }
-            Some(Value::Length(h, Unit::Vw))      => { lb.dimensions.content.height = *h / 100.0 * containing_width; }
-            Some(Value::Length(h, Unit::Percent)) => { lb.dimensions.content.height = *h / 100.0 * containing_width; }
+            Some(Value::Length(h, Unit::Px)) => {
+                lb.dimensions.content.height = *h;
+            }
+            Some(Value::Length(h, Unit::Vh)) => {
+                lb.dimensions.content.height = *h / 100.0 * viewport_height;
+            }
+            Some(Value::Length(h, Unit::Vw)) => {
+                lb.dimensions.content.height = *h / 100.0 * containing_width;
+            }
+            Some(Value::Length(h, Unit::Percent)) => {
+                lb.dimensions.content.height = *h / 100.0 * containing_width;
+            }
             _ => {}
         }
     }

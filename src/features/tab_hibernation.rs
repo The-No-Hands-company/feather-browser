@@ -78,7 +78,10 @@ impl HibernationManager {
             .collect();
 
         for id in overdue {
-            if let Some(tab) = tabs.iter_mut().find(|t| t.id == id && t.state == TabState::Idle) {
+            if let Some(tab) = tabs
+                .iter_mut()
+                .find(|t| t.id == id && t.state == TabState::Idle)
+            {
                 tab.renderer.suspend();
                 tab.state = TabState::Hibernated;
                 self.idle_since.remove(&id);

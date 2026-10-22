@@ -55,7 +55,11 @@ mod inner {
 
     impl FontMetrics {
         pub fn load(size: f32) -> Self {
-            let size = if !size.is_finite() || size <= 0.0 { 16.0 } else { size.clamp(1.0, 512.0) };
+            let size = if !size.is_finite() || size <= 0.0 {
+                16.0
+            } else {
+                size.clamp(1.0, 512.0)
+            };
             let font = shared_font();
             let lm = font
                 .horizontal_line_metrics(size)
@@ -69,7 +73,14 @@ mod inner {
             let descent = (-lm.descent).max(0.0);
             let line_height = (ascent + descent) * 1.2;
             let space_advance = font.metrics(' ', size).advance_width;
-            FontMetrics { font, size, ascent, descent, line_height, space_advance }
+            FontMetrics {
+                font,
+                size,
+                ascent,
+                descent,
+                line_height,
+                space_advance,
+            }
         }
 
         pub fn load_cached(size: f32) -> Self {

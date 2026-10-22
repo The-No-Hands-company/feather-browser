@@ -59,10 +59,16 @@ mod font_tests {
     fn test_different_sizes_have_different_metrics() {
         let small = FontMetrics::load_cached(12.0);
         let large = FontMetrics::load_cached(32.0);
-        assert!(large.line_height > small.line_height,
-            "32px line_height ({}) should exceed 12px ({})", large.line_height, small.line_height);
-        assert!(large.advance_width('M') > small.advance_width('M'),
-            "32px 'M' advance should exceed 12px");
+        assert!(
+            large.line_height > small.line_height,
+            "32px line_height ({}) should exceed 12px ({})",
+            large.line_height,
+            small.line_height
+        );
+        assert!(
+            large.advance_width('M') > small.advance_width('M'),
+            "32px 'M' advance should exceed 12px"
+        );
     }
 
     #[test]
@@ -73,7 +79,8 @@ mod font_tests {
         assert!(
             (g.advance_width - from_method).abs() < 0.5,
             "GlyphBitmap.advance_width {:.2} should match advance_width('A') {:.2}",
-            g.advance_width, from_method
+            g.advance_width,
+            from_method
         );
     }
 
@@ -89,7 +96,8 @@ mod font_tests {
         assert!(
             (cached.advance_width - uncached.advance_width).abs() < 0.01,
             "cached advance {:.2} vs uncached {:.2}",
-            cached.advance_width, uncached.advance_width
+            cached.advance_width,
+            uncached.advance_width
         );
     }
 
@@ -113,7 +121,8 @@ mod font_tests {
         assert!(
             (glyph.advance_width - from_metrics).abs() < 0.5,
             "cached advance_width {:.2} should match advance_width('M') at 24px: {:.2}",
-            glyph.advance_width, from_metrics
+            glyph.advance_width,
+            from_metrics
         );
     }
 
@@ -134,7 +143,10 @@ mod font_tests {
         // We cannot inspect the cache directly (private), but the call must not panic
         // and must return a valid glyph.
         let g = fm.rasterize_cached('A');
-        assert!(g.advance_width > 0.0, "post-flush rasterization must return valid glyph");
+        assert!(
+            g.advance_width > 0.0,
+            "post-flush rasterization must return valid glyph"
+        );
     }
 
     #[test]

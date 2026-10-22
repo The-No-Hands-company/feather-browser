@@ -23,8 +23,8 @@ pub trait PageRenderer {
     fn set_zoom(&self, factor: f64);
 
     // Hibernation lifecycle — called by HibernationManager
-    fn suspend(&self);   // drops DOM/JS state, stashes URL
-    fn resume(&self);    // reloads from stashed URL
+    fn suspend(&self); // drops DOM/JS state, stashes URL
+    fn resume(&self); // reloads from stashed URL
 
     // Nexus integration (v1: Nexus-origin pages only)
     fn run_script(&self, js: &str);

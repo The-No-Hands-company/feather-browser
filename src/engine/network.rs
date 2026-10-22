@@ -64,5 +64,9 @@ pub fn fetch_page(url: &str) -> Result<FetchResult, FetchError> {
     };
     let html = String::from_utf8_lossy(truncated).into_owned();
 
-    Ok(FetchResult { html, base_url, status })
+    Ok(FetchResult {
+        html,
+        base_url,
+        status,
+    })
 }

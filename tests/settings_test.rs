@@ -39,7 +39,11 @@ fn test_save_and_load_roundtrip() {
 fn test_load_ignores_unknown_fields() {
     let dir = TempDir::new().unwrap();
     let path = dir.path().join("config.json");
-    std::fs::write(&path, r#"{"adblock_enabled":false,"unknown_future_field":42}"#).unwrap();
+    std::fs::write(
+        &path,
+        r#"{"adblock_enabled":false,"unknown_future_field":42}"#,
+    )
+    .unwrap();
     let s = Settings::load_from(path.to_str().unwrap());
     assert_eq!(s.adblock_enabled, false);
     // unknown field silently ignored, no panic
