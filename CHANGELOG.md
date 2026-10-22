@@ -8,6 +8,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-22
+
+### Added
+- `link_stylesheets(root: &Node) -> Vec<String>` in `src/engine/html.rs` — collects `href` values
+  from every `<link rel="stylesheet">` in the DOM; `rel` is case-insensitive, non-stylesheet links
+  (`rel="icon"`, `rel="prefetch"`, etc.) are ignored; depth-capped at 512 to prevent stack overflow
+- `resolve_url(href: &str, base: &str) -> Option<String>` in `src/bridge/feather_renderer.rs` —
+  resolves absolute, protocol-relative (`//`), root-relative (`/path`), and relative (`path`)
+  hrefs against the page's base URL
+- Both fetch closures (`load_url` and `fetch_and_render_url`) now collect linked stylesheets on
+  the background thread, fetch each one, and pass the concatenated CSS as `extra_css` to
+  `render_page`; the `render_page` signature gains a third `extra_css: &str` parameter
+
 ## [0.3.0] — 2026-10-22
 
 ### Milestone — First Browseable Pages
