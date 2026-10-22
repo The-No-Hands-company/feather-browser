@@ -160,3 +160,48 @@ fn test_render_loop_pen_advances_with_cached_glyphs() {
          (advance_width may be 0, stacking all chars at x=0)"
     );
 }
+
+#[test]
+fn test_dark_color_constant_value() {
+    assert_eq!(
+        CssColor::DARK,
+        CssColor { r: 30, g: 30, b: 30, a: 255 },
+        "CssColor::DARK must equal the near-black color previously hard-coded at three render sites"
+    );
+}
+
+#[test]
+fn test_pen_advance_f32_accumulation() {
+    use feather::engine::font::FontMetrics;
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+
+    // "MMMMM" — five wide characters; with correct f32 advance accumulation,
+    // each M occupies its own horizontal strip of columns.
+    let dom = HtmlParser::parse("<p>MMMMM</p>");
+    let sheet = CssParser::parse("p { font-size: 16px; color: black; display: block; }");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build(&styled, 400.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 400.0, height: 100.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+
+    let fm = FontMetrics::load(16.0);
+    let single_char_px = fm.advance_width('M') as usize;
+
+    let non_white_cols = (0..canvas.width)
+        .filter(|&x| (0..canvas.height).any(|y| canvas.pixels[y * canvas.width + x] != CssColor::WHITE))
+        .count();
+
+    // 5 M's with correct advance must span at least 4× a single M's width in columns.
+    assert!(
+        non_white_cols >= 4 * single_char_px,
+        "Text 'MMMMM' should span ≥{} non-white columns (4×{}px); got {} — \
+         pen_x may not be advancing correctly",
+        4 * single_char_px, single_char_px, non_white_cols
+    );
+}

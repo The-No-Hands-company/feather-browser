@@ -290,7 +290,7 @@ fn collect_inline_text(children: &[LayoutBox], parent_font_size: f32, parent_col
             BoxType::Inline(s) => {
                 let color = match s.properties.get("color") {
                     Some(Value::Color(c)) => *c,
-                    _ => CssColor { r: 30, g: 30, b: 30, a: 255 },
+                    _ => CssColor::DARK,
                 };
                 let font_size = match s.properties.get("font-size") {
                     Some(Value::Length(n, Unit::Px)) => *n,

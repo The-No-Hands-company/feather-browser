@@ -104,11 +104,11 @@ fn render_box(canvas: &mut Canvas, lb: &LayoutBox, font: &FontMetrics, scroll_y:
             }
             for item in &line.items {
                 let item_font = crate::engine::font::FontMetrics::load_cached(item.font_size);
-                let mut pen_x = (origin_x + item.x) as i32;
+                let mut pen_x_f: f32 = origin_x + item.x;
                 for ch in item.text.chars() {
                     let glyph = item_font.rasterize_cached(ch);
-                    blit_glyph(canvas, &glyph, pen_x, baseline_y, item.color);
-                    pen_x = pen_x.saturating_add(glyph.advance_width as i32);
+                    blit_glyph(canvas, &glyph, pen_x_f.round() as i32, baseline_y, item.color);
+                    pen_x_f += glyph.advance_width;
                 }
             }
         }
@@ -155,7 +155,7 @@ fn render_text(canvas: &mut Canvas, lb: &LayoutBox) {
         Some(t) if !t.is_empty() => t,
         _ => return,
     };
-    let font_color = CssColor { r: 30, g: 30, b: 30, a: 255 };
+    let font_color = CssColor::DARK;
     let rect = Rect {
         x: lb.dimensions.content.x,
         y: lb.dimensions.content.y,
@@ -216,7 +216,7 @@ fn render_text_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
         Some(t) if !t.is_empty() => t,
         _ => return,
     };
-    let font_color = CssColor { r: 30, g: 30, b: 30, a: 255 };
+    let font_color = CssColor::DARK;
     let rect = Rect {
         x: lb.dimensions.content.x,
         y: lb.dimensions.content.y - scroll_y,

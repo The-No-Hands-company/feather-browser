@@ -29,6 +29,7 @@ impl CssColor {
     pub const WHITE: CssColor = CssColor { r: 255, g: 255, b: 255, a: 255 };
     pub const BLACK: CssColor = CssColor { r: 0, g: 0, b: 0, a: 255 };
     pub const TRANSPARENT: CssColor = CssColor { r: 0, g: 0, b: 0, a: 0 };
+    pub const DARK: CssColor = CssColor { r: 30, g: 30, b: 30, a: 255 };
 
     pub fn from_keyword(s: &str) -> Option<Self> {
         match s {
