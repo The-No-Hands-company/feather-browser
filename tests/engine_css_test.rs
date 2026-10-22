@@ -341,3 +341,45 @@ mod border_shorthand_tests {
         assert!(decls.get("border-top-width").is_none(), "side shorthand must not set other sides");
     }
 }
+
+#[cfg(test)]
+mod named_color_tests {
+    use feather::engine::css::{CssColor, CssParser, Value};
+
+    fn parse_color(s: &str) -> Option<CssColor> {
+        match CssParser::parse_value(s) {
+            Value::Color(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn test_named_colors_css_level1() {
+        assert_eq!(parse_color("navy"),   Some(CssColor { r: 0,   g: 0,   b: 128, a: 255 }));
+        assert_eq!(parse_color("teal"),   Some(CssColor { r: 0,   g: 128, b: 128, a: 255 }));
+        assert_eq!(parse_color("maroon"), Some(CssColor { r: 128, g: 0,   b: 0,   a: 255 }));
+        assert_eq!(parse_color("olive"),  Some(CssColor { r: 128, g: 128, b: 0,   a: 255 }));
+        assert_eq!(parse_color("silver"), Some(CssColor { r: 192, g: 192, b: 192, a: 255 }));
+        assert_eq!(parse_color("lime"),   Some(CssColor { r: 0,   g: 255, b: 0,   a: 255 }));
+    }
+
+    #[test]
+    fn test_named_colors_aliases() {
+        assert_eq!(parse_color("cyan"),      parse_color("aqua"),      "cyan == aqua");
+        assert_eq!(parse_color("magenta"),   parse_color("fuchsia"),   "magenta == fuchsia");
+        assert_eq!(parse_color("gray"),      parse_color("grey"),      "gray == grey");
+        assert_eq!(parse_color("lightgray"), parse_color("lightgrey"), "lightgray == lightgrey");
+        assert_eq!(parse_color("darkgray"),  parse_color("darkgrey"),  "darkgray == darkgrey");
+        assert_eq!(parse_color("slategray"), parse_color("slategrey"), "slategray == slategrey");
+    }
+
+    #[test]
+    fn test_named_colors_extended() {
+        assert_eq!(parse_color("coral"),   Some(CssColor { r: 255, g: 127, b: 80,  a: 255 }));
+        assert_eq!(parse_color("crimson"), Some(CssColor { r: 220, g: 20,  b: 60,  a: 255 }));
+        assert_eq!(parse_color("gold"),    Some(CssColor { r: 255, g: 215, b: 0,   a: 255 }));
+        assert_eq!(parse_color("hotpink"), Some(CssColor { r: 255, g: 105, b: 180, a: 255 }));
+        assert_eq!(parse_color("tomato"),  Some(CssColor { r: 255, g: 99,  b: 71,  a: 255 }));
+        assert_eq!(parse_color("indigo"),  Some(CssColor { r: 75,  g: 0,   b: 130, a: 255 }));
+    }
+}
