@@ -347,9 +347,11 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
             if e.tag_name == "img" {
                 let w = e.attributes.get("width")
                     .and_then(|v| v.parse::<f32>().ok())
+                    .filter(|v| v.is_finite() && *v >= 0.0)
                     .unwrap_or(100.0);
                 let h = e.attributes.get("height")
                     .and_then(|v| v.parse::<f32>().ok())
+                    .filter(|v| v.is_finite() && *v >= 0.0)
                     .unwrap_or(50.0);
                 lb.dimensions.content.width = w;
                 lb.dimensions.content.height = h;

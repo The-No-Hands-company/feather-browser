@@ -8,11 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
-### In progress (0.2.4)
-- `text-align` inheritance through the style tree
-- `rem`/`%` font-size → px conversion
-- `<img>` placeholder rendering (grey box with alt-text label)
-- LRU cap on the glyph cache (unbounded growth fix)
+## [0.2.4] — 2026-10-22
+
+### Added
+- `text-align` inheritance through the style tree — `"text-align"` added to `INHERITABLE` in `style.rs`
+- `rem` and `%` font-size units now resolve to px (`rem` uses 16 px CSS default base; `%` resolves relative to parent font-size)
+- `<img>` placeholder rendering — grey fill (180,180,180) + 1px border (140,140,140) + centred 12px alt text; dimensions read from `width`/`height` HTML attributes (default 100×50)
+- Glyph cache flush-on-overflow cap: `GLYPH_CACHE_CAP = 512`; cache clears on overflow (O(1) amortised, no new dependencies)
 
 ---
 

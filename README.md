@@ -211,12 +211,11 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 ---
 
-## Known Limitations (current: 0.2.3)
+## Known Limitations (current: 0.2.4)
 
 - **No network loading** — FeatherRenderer cannot fetch and render live URLs yet; networking is a 0.3.0 milestone goal.
 - **No scrolling** — pages taller than the viewport are clipped.
 - **Inline layout is partial** — `InlineFormattingContext` handles `text-align` left/center/right, but floats, flexbox, and grid are not implemented.
-- **`text-align` is not inherited** — must be set explicitly on each element; inheritance is deferred to 0.0.9.
 - **`rem` uses a fixed 16 px base** — `rem` and `%` font-size units now resolve to px, but `rem` always uses 16 px (the CSS spec default) because root font-size tracking is not yet implemented.
 - **Glyph cache flushes at 512 entries** — unbounded growth is capped; a full flush-on-overflow replaces an LRU eviction policy (no new dependencies). Typical pages stay well under 512 entries.
 - **CSS coverage is limited** — shorthand properties (`margin`, `padding`, `border`), pseudo-classes, and most selectors beyond tag/class/id are not yet parsed.
