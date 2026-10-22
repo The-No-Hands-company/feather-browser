@@ -211,7 +211,7 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 ---
 
-## Known Limitations (current: 0.2.4)
+## Known Limitations (current: 0.2.9)
 
 - **No network loading** — FeatherRenderer cannot fetch and render live URLs yet; networking is a 0.3.0 milestone goal.
 - **No scrolling** — pages taller than the viewport are clipped.
