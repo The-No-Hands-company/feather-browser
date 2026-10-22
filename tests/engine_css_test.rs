@@ -151,6 +151,29 @@ mod renderer_tests {
     }
 
     #[test]
+    fn test_margin_shorthand_3_values() {
+        // 3-value: top, left/right, bottom
+        let sheet = CssParser::parse("p { margin: 5px 10px 15px }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(decls.get("margin-top"), Some(&Value::Length(5.0, Unit::Px)));
+        assert_eq!(decls.get("margin-right"), Some(&Value::Length(10.0, Unit::Px)));
+        assert_eq!(decls.get("margin-bottom"), Some(&Value::Length(15.0, Unit::Px)));
+        assert_eq!(decls.get("margin-left"), Some(&Value::Length(10.0, Unit::Px)));
+    }
+
+    #[test]
+    fn test_margin_shorthand_4_values() {
+        let sheet = CssParser::parse("p { margin: 1px 2px 3px 4px }");
+        let decls: std::collections::HashMap<_, _> =
+            sheet.rules[0].declarations.iter().cloned().collect();
+        assert_eq!(decls.get("margin-top"), Some(&Value::Length(1.0, Unit::Px)));
+        assert_eq!(decls.get("margin-right"), Some(&Value::Length(2.0, Unit::Px)));
+        assert_eq!(decls.get("margin-bottom"), Some(&Value::Length(3.0, Unit::Px)));
+        assert_eq!(decls.get("margin-left"), Some(&Value::Length(4.0, Unit::Px)));
+    }
+
+    #[test]
     fn test_padding_shorthand_1_value() {
         let sheet = CssParser::parse("p { padding: 8px }");
         let decls: std::collections::HashMap<_, _> =
