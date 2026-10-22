@@ -8,6 +8,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.5] — 2026-10-22
+
+### Added
+- `line-height` added to `INHERITABLE` in `style.rs` — value cascades from parent to child
+- `InlineFormattingContext::line_height_override: Option<f32>` — CSS `line-height` resolved to px
+  before the IFC runs; the field is `None` by default (font metrics drive line height)
+- `layout_block` reads `line-height` from the block's CSS cascade:
+  - `line-height: 24px` → 24 px override
+  - `line-height: 1.5` (unitless) → `1.5 × font_size` px
+- IFC line-height logic: `effective_lh = max(line_height_override, item_font.line_height)`
+  — the override is a minimum; font metrics still win when they are taller
+
+### Tests added
+- `test_line_height_px_expands_line_box` — `line-height: 40px` produces line height ≥ 39
+- `test_line_height_unitless_multiplier` — `line-height: 2` at 16 px gives line height ≥ 31
+
 ## [0.3.4] — 2026-10-22
 
 ### Added

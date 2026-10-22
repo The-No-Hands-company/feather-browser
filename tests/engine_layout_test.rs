@@ -104,6 +104,7 @@ mod layout_tests {
             font_size: 16.0,
             available_width: 400.0,
             align: TextAlign::Left,
+            line_height_override: None,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -128,6 +129,7 @@ mod layout_tests {
             font_size: 16.0,
             available_width,
             align: TextAlign::Center,
+            line_height_override: None,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -159,6 +161,7 @@ mod layout_tests {
             font_size: 16.0,
             available_width,
             align: TextAlign::Right,
+            line_height_override: None,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -404,6 +407,40 @@ mod box_model_layout_tests {
         assert!(
             bb.width >= div.dimensions.content.width + 8.0 - 0.01,
             "border_box width must include left+right border"
+        );
+    }
+
+    #[test]
+    fn test_line_height_px_expands_line_box() {
+        // line-height: 40px should produce line boxes taller than the default ~19px
+        let dom = HtmlParser::parse(r#"<div style="line-height: 40px; font-size: 16px;">hello</div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box");
+        assert!(!div.line_boxes.is_empty(), "must have line boxes");
+        let first_line_height = div.line_boxes[0].height;
+        assert!(
+            first_line_height >= 39.0,
+            "line-height: 40px must produce line height ≥ 39, got {:.2}",
+            first_line_height
+        );
+    }
+
+    #[test]
+    fn test_line_height_unitless_multiplier() {
+        // line-height: 2 = 2 × font-size (16px) = 32px line height
+        let dom = HtmlParser::parse(r#"<div style="line-height: 2; font-size: 16px;">hello</div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box");
+        assert!(!div.line_boxes.is_empty(), "must have line boxes");
+        let first_line_height = div.line_boxes[0].height;
+        assert!(
+            first_line_height >= 31.0,
+            "line-height: 2 at 16px should give line height ≥ 31, got {:.2}",
+            first_line_height
         );
     }
 }
