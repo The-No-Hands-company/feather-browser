@@ -8,6 +8,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.7] — 2026-10-22
+
+### Added
+- 38 additional CSS named colors in `CssColor::from_keyword`: cyan/aqua, magenta/fuchsia, lime, navy, teal, maroon, olive, silver, coral, salmon, skyblue, tomato, indigo, violet, brown, tan, lightgray/grey, darkgray/grey, whitesmoke, beige, gold, crimson, hotpink, lightblue, lightgreen, lightyellow, darkblue, darkgreen, darkred, darkorange, deeppink, deepskyblue, forestgreen, limegreen, mediumblue, midnightblue, royalblue, slategray/grey, steelblue
+
 ## [0.2.6] — 2026-10-22
 
 ### Added
