@@ -67,6 +67,7 @@ pub struct PlacedInlineItem {
     pub color: CssColor,
     pub font_bold: bool,
     pub font_italic: bool,
+    pub text_decoration: TextDecoration,
 }
 
 /// One horizontal line in an inline formatting context.
@@ -86,6 +87,7 @@ pub struct InlineText {
     pub font_size: f32,
     pub font_bold: bool,
     pub font_italic: bool,
+    pub text_decoration: TextDecoration,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -94,6 +96,14 @@ pub enum TextAlign {
     Left,
     Center,
     Right,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum TextDecoration {
+    #[default]
+    None,
+    Underline,
+    LineThrough,
 }
 
 /// Lays inline text runs into line boxes using a greedy left-to-right algorithm.
@@ -190,6 +200,7 @@ impl InlineFormattingContext {
                     color: item.color,
                     font_bold: item.font_bold,
                     font_italic: item.font_italic,
+                    text_decoration: item.text_decoration,
                 });
                 cursor_x = x + w;
                 let effective_lh = self
@@ -345,6 +356,7 @@ fn collect_inline_text(
     parent_color: CssColor,
     parent_bold: bool,
     parent_italic: bool,
+    parent_decoration: TextDecoration,
 ) -> Vec<InlineText> {
     let mut items = Vec::new();
     for child in children {
@@ -358,6 +370,7 @@ fn collect_inline_text(
                             font_size: parent_font_size,
                             font_bold: parent_bold,
                             font_italic: parent_italic,
+                            text_decoration: parent_decoration,
                         });
                     }
                 }
@@ -379,12 +392,18 @@ fn collect_inline_text(
                     s.properties.get("font-style"),
                     Some(Value::Keyword(k)) if k == "italic" || k == "oblique"
                 );
+                let decoration = match s.properties.get("text-decoration") {
+                    Some(Value::Keyword(k)) if k == "underline" => TextDecoration::Underline,
+                    Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
+                    _ => parent_decoration,
+                };
                 collect_text_from_layout_children(
                     &child.children,
                     color,
                     font_size,
                     bold,
                     italic,
+                    decoration,
                     &mut items,
                 );
             }
@@ -400,6 +419,7 @@ fn collect_text_from_layout_children(
     font_size: f32,
     font_bold: bool,
     font_italic: bool,
+    text_decoration: TextDecoration,
     out: &mut Vec<InlineText>,
 ) {
     for child in children {
@@ -411,10 +431,11 @@ fn collect_text_from_layout_children(
                     font_size,
                     font_bold,
                     font_italic,
+                    text_decoration,
                 });
             }
         }
-        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, out);
+        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, text_decoration, out);
     }
 }
 
@@ -472,7 +493,17 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
             ),
             BoxType::Anonymous => false,
         };
-        let items = collect_inline_text(&lb.children, font_size, color, bold, italic);
+        let decoration = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s) => {
+                match s.properties.get("text-decoration") {
+                    Some(Value::Keyword(k)) if k == "underline" => TextDecoration::Underline,
+                    Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
+                    _ => TextDecoration::None,
+                }
+            }
+            BoxType::Anonymous => TextDecoration::None,
+        };
+        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration);
         if !items.is_empty() {
             let align = match &lb.box_type {
                 BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("text-align") {

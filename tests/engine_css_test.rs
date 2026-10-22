@@ -723,4 +723,36 @@ mod named_color_tests {
             })
         );
     }
+
+    fn find_decl<'a>(decls: &'a [(String, Value)], key: &str) -> Option<&'a Value> {
+        decls.iter().find(|(k, _)| k == key).map(|(_, v)| v)
+    }
+
+    #[test]
+    fn test_text_decoration_underline_parsed() {
+        let sheet = CssParser::parse("p { text-decoration: underline; }");
+        assert_eq!(sheet.rules.len(), 1);
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "text-decoration"),
+            Some(&Value::Keyword("underline".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_text_decoration_line_through_parsed() {
+        let sheet = CssParser::parse("p { text-decoration: line-through; }");
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "text-decoration"),
+            Some(&Value::Keyword("line-through".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_text_decoration_none_parsed() {
+        let sheet = CssParser::parse("p { text-decoration: none; }");
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "text-decoration"),
+            Some(&Value::Keyword("none".to_string()))
+        );
+    }
 }

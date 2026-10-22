@@ -4,7 +4,7 @@ use crate::engine::css::{CssColor, Value};
 use crate::engine::dom::NodeType;
 #[cfg(feature = "feather-renderer")]
 use crate::engine::font::{FontMetrics, GlyphBitmap};
-use crate::engine::layout::{BoxType, LayoutBox, Rect};
+use crate::engine::layout::{BoxType, LayoutBox, Rect, TextDecoration};
 
 /// A software-rendered pixel buffer. Each pixel is RGBA (not pre-multiplied).
 #[derive(Debug, Clone)]
@@ -137,6 +137,32 @@ fn render_box(
                         item.color,
                     );
                     pen_x_f += glyph.advance_width;
+                }
+                // Draw text decoration after glyphs so it sits on top.
+                let deco_x = (origin_x + item.x) as i32;
+                let deco_w = item.width.ceil() as i32;
+                match item.text_decoration {
+                    TextDecoration::Underline => {
+                        let y = baseline_y + (item_font.descent * 0.25).ceil() as i32 + 1;
+                        for dx in 0..deco_w {
+                            canvas.set_pixel(
+                                (deco_x + dx).max(0) as usize,
+                                y.max(0) as usize,
+                                item.color,
+                            );
+                        }
+                    }
+                    TextDecoration::LineThrough => {
+                        let y = baseline_y - (item_font.ascent * 0.3).ceil() as i32;
+                        for dx in 0..deco_w {
+                            canvas.set_pixel(
+                                (deco_x + dx).max(0) as usize,
+                                y.max(0) as usize,
+                                item.color,
+                            );
+                        }
+                    }
+                    TextDecoration::None => {}
                 }
             }
         }
