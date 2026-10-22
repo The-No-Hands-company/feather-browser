@@ -65,3 +65,113 @@ fn test_stacked_blocks_have_increasing_y() {
         assert!(sorted[0] <= sorted[sorted.len() - 1]);
     }
 }
+
+#[cfg(feature = "feather-renderer")]
+mod layout_tests {
+    use feather::engine::css::{CssColor, CssParser};
+    use feather::engine::font::FontMetrics;
+    use feather::engine::html::HtmlParser;
+    use feather::engine::layout::{InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign};
+    use feather::engine::style::style_tree;
+
+    fn find_line_boxes(lb: &LayoutBox) -> Option<&Vec<LineBox>> {
+        if !lb.line_boxes.is_empty() { return Some(&lb.line_boxes); }
+        for child in &lb.children {
+            if let Some(found) = find_line_boxes(child) { return Some(found); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_text_align_left_is_default() {
+        let items = vec![InlineText {
+            text: "Hi".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert!(!lines.is_empty(), "layout produced no lines");
+        assert_eq!(
+            lines[0].items[0].x, 0.0,
+            "left-aligned text must start at x=0.0, got {:.2}",
+            lines[0].items[0].x
+        );
+    }
+
+    #[test]
+    fn test_text_align_center_offsets_items() {
+        let available_width = 400.0_f32;
+        let items = vec![InlineText {
+            text: "Hi".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width,
+            align: TextAlign::Center,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert!(!lines.is_empty(), "layout produced no lines");
+        let first_item = &lines[0].items[0];
+
+        let fm = FontMetrics::load(16.0);
+        let content_w = fm.measure_str("Hi");
+        let expected_offset = (available_width - content_w) / 2.0;
+
+        assert!(
+            (first_item.x - expected_offset).abs() < 1.0,
+            "center offset should be ≈{:.2}, got {:.2}", expected_offset, first_item.x
+        );
+    }
+
+    #[test]
+    fn test_text_align_right_offsets_items() {
+        let available_width = 400.0_f32;
+        let items = vec![InlineText {
+            text: "Hi".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width,
+            align: TextAlign::Right,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert!(!lines.is_empty(), "layout produced no lines");
+        let first_item = &lines[0].items[0];
+
+        let fm = FontMetrics::load(16.0);
+        let content_w = fm.measure_str("Hi");
+        let expected_offset = available_width - content_w;
+
+        assert!(
+            (first_item.x - expected_offset).abs() < 1.0,
+            "right offset should be ≈{:.2}, got {:.2}", expected_offset, first_item.x
+        );
+    }
+
+    #[test]
+    fn test_text_align_center_via_css() {
+        // Full pipeline: CSS sets text-align:center; the line box's first item
+        // must have x > 0, confirming layout_block() reads and threads the property.
+        let dom = HtmlParser::parse("<p>Hi</p>");
+        let sheet = CssParser::parse("p { text-align: center; font-size: 16px; display: block; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 400.0);
+        let line_boxes = find_line_boxes(&layout).expect("no line boxes found in layout tree");
+        assert!(!line_boxes[0].items.is_empty(), "line box has no items");
+        assert!(
+            line_boxes[0].items[0].x > 0.0,
+            "center-aligned text must have x > 0.0, got {:.2} — \
+             layout_block() may not be reading text-align from the style tree",
+            line_boxes[0].items[0].x
+        );
+    }
+}

@@ -84,10 +84,19 @@ pub struct InlineText {
     pub font_size: f32,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub enum TextAlign {
+    #[default]
+    Left,
+    Center,
+    Right,
+}
+
 /// Lays inline text runs into line boxes using a greedy left-to-right algorithm.
 pub struct InlineFormattingContext {
     pub font_size: f32,
     pub available_width: f32,
+    pub align: TextAlign,
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -107,6 +116,15 @@ impl InlineFormattingContext {
         macro_rules! flush_line {
             () => {
                 if !current_items.is_empty() {
+                    let content_w = current_items.last().map(|i| i.x + i.width).unwrap_or(0.0);
+                    let offset = match self.align {
+                        TextAlign::Left => 0.0,
+                        TextAlign::Center => ((self.available_width - content_w) / 2.0).max(0.0),
+                        TextAlign::Right  => (self.available_width - content_w).max(0.0),
+                    };
+                    if offset > 0.0 {
+                        for item in &mut current_items { item.x += offset; }
+                    }
                     let lh = if cur_line_height > 0.0 { cur_line_height } else { 16.0 };
                     let bl = if cur_baseline > 0.0 { cur_baseline } else { 12.8 };
                     lines.push(LineBox {
@@ -340,9 +358,21 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, depth: usize) {
         };
         let items = collect_inline_text(&lb.children, font_size, color);
         if !items.is_empty() {
+            let align = match &lb.box_type {
+                BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("text-align") {
+                    Some(Value::Keyword(k)) => match k.as_str() {
+                        "center" => TextAlign::Center,
+                        "right"  => TextAlign::Right,
+                        _        => TextAlign::Left,
+                    },
+                    _ => TextAlign::Left,
+                },
+                BoxType::Anonymous => TextAlign::Left,
+            };
             let ifc = InlineFormattingContext {
                 font_size,
                 available_width: lb.dimensions.content.width.max(1.0),
+                align,
             };
             let (line_boxes, height) = ifc.layout(&items);
             lb.line_boxes = line_boxes;
