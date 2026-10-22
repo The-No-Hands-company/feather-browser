@@ -3,7 +3,7 @@ use super::PageRenderer;
 use crate::engine::{
     css::CssParser,
     dom::NodeType,
-    html::HtmlParser,
+    html::{link_stylesheets, HtmlParser},
     layout::{LayoutEngine, Rect},
     network,
     render::{canvas_to_bgra, Painter},
@@ -148,7 +148,7 @@ impl FeatherRenderer {
         Self { inner }
     }
 
-    fn render_page(&self, html: &str, url: &str) {
+    fn render_page(&self, html: &str, url: &str, extra_css: &str) {
         let (w, h) = {
             let s = self.inner.borrow();
             (
@@ -158,9 +158,9 @@ impl FeatherRenderer {
         };
 
         let dom = HtmlParser::parse(html);
-        // Fix 7: prepend UA stylesheet so head/style/script/title default to display:none.
+        // UA stylesheet hides chrome; extra_css carries linked stylesheets fetched off-thread.
         let ua_css = "head{display:none}style{display:none}script{display:none}title{display:none}";
-        let css_text = format!("{} {}", ua_css, extract_style_tags(&dom.root, 0));
+        let css_text = format!("{} {} {}", ua_css, extra_css, extract_style_tags(&dom.root, 0));
         let sheet = CssParser::parse(&css_text);
         let styled = style_tree(&dom.root, &sheet);
         let title = extract_title(&dom.root, 0).unwrap_or_else(|| url.to_string());
@@ -226,7 +226,21 @@ impl FeatherRenderer {
                     return;
                 }
             };
-            let future = match pool.push_future(move || network::fetch_page(&url_clone)) {
+            let future = match pool.push_future(move || -> Result<(String, String), network::FetchError> {
+                let r = network::fetch_page(&url_clone)?;
+                let dom = HtmlParser::parse(&r.html);
+                let hrefs = link_stylesheets(&dom.root);
+                let mut extra_css = String::new();
+                for href in hrefs {
+                    if let Some(abs) = resolve_url(&href, &r.base_url) {
+                        if let Ok(css_r) = network::fetch_page(&abs) {
+                            extra_css.push_str(&css_r.html);
+                            extra_css.push('\n');
+                        }
+                    }
+                }
+                Ok((r.html, extra_css))
+            }) {
                 Ok(f) => f,
                 Err(e) => {
                     log::error!("[FeatherRenderer] push_future failed: {}", e);
@@ -235,18 +249,19 @@ impl FeatherRenderer {
             };
             drop(pool);
             match future.await {
-                Ok(Ok(r)) => renderer.render_page(&r.html, &url),
+                Ok(Ok((html, extra_css))) => renderer.render_page(&html, &url, &extra_css),
                 Ok(Err(e)) => {
                     let error_html = format!(
                         "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
                         html_escape(&e.0)
                     );
-                    renderer.render_page(&error_html, &url);
+                    renderer.render_page(&error_html, &url, "");
                 }
                 Err(_) => {
                     renderer.render_page(
                         "<html><body><h2>Load failed</h2><p>Network thread panicked</p></body></html>",
                         &url,
+                        "",
                     );
                 }
             }
@@ -286,7 +301,21 @@ impl PageRenderer for FeatherRenderer {
                     return;
                 }
             };
-            let future = match pool.push_future(move || network::fetch_page(&url_clone)) {
+            let future = match pool.push_future(move || -> Result<(String, String), network::FetchError> {
+                let r = network::fetch_page(&url_clone)?;
+                let dom = HtmlParser::parse(&r.html);
+                let hrefs = link_stylesheets(&dom.root);
+                let mut extra_css = String::new();
+                for href in hrefs {
+                    if let Some(abs) = resolve_url(&href, &r.base_url) {
+                        if let Ok(css_r) = network::fetch_page(&abs) {
+                            extra_css.push_str(&css_r.html);
+                            extra_css.push('\n');
+                        }
+                    }
+                }
+                Ok((r.html, extra_css))
+            }) {
                 Ok(f) => f,
                 Err(e) => {
                     log::error!("[FeatherRenderer] push_future failed: {}", e);
@@ -295,18 +324,19 @@ impl PageRenderer for FeatherRenderer {
             };
             drop(pool);
             match future.await {
-                Ok(Ok(r)) => renderer.render_page(&r.html, &url),
+                Ok(Ok((html, extra_css))) => renderer.render_page(&html, &url, &extra_css),
                 Ok(Err(e)) => {
                     let error_html = format!(
                         "<html><body><h2>Load failed</h2><p>{}</p></body></html>",
                         html_escape(&e.0)
                     );
-                    renderer.render_page(&error_html, &url);
+                    renderer.render_page(&error_html, &url, "");
                 }
                 Err(_) => {
                     renderer.render_page(
                         "<html><body><h2>Load failed</h2><p>Network thread panicked</p></body></html>",
                         &url,
+                        "",
                     );
                 }
             }
@@ -409,6 +439,26 @@ impl PageRenderer for FeatherRenderer {
 }
 
 /// Fix 4: Escape HTML special characters to prevent injection in error pages.
+/// Resolve `href` against `base` URL. Returns `None` if resolution is impossible.
+fn resolve_url(href: &str, base: &str) -> Option<String> {
+    if href.starts_with("http://") || href.starts_with("https://") {
+        return Some(href.to_string());
+    }
+    let scheme_end = base.find("://")?;
+    let scheme = &base[..scheme_end];
+    if let Some(rest) = href.strip_prefix("//") {
+        return Some(format!("{}://{}", scheme, rest));
+    }
+    let after_scheme = &base[scheme_end + 3..];
+    let path_start = after_scheme.find('/').unwrap_or(after_scheme.len());
+    let origin = &base[..scheme_end + 3 + path_start];
+    if href.starts_with('/') {
+        return Some(format!("{}{}", origin, href));
+    }
+    let base_dir_end = base.rfind('/').unwrap_or(base.len());
+    Some(format!("{}/{}", &base[..base_dir_end], href))
+}
+
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")

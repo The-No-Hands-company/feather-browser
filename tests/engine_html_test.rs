@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #![cfg(feature = "feather-renderer")]
 use feather::engine::dom::{Dom, Node, NodeType};
+use feather::engine::html::{link_stylesheets, HtmlParser};
 use std::collections::HashMap;
 
 #[test]
@@ -39,7 +40,6 @@ fn test_dom_root_accessible() {
 // ---------------------------------------------------------------------------
 // HTML parser tests
 // ---------------------------------------------------------------------------
-use feather::engine::html::HtmlParser;
 
 #[test]
 fn test_parse_simple_element() {
@@ -138,4 +138,47 @@ fn test_nested_elements() {
         .filter(|n| n.tag_name() == Some("li"))
         .collect();
     assert_eq!(lis.len(), 2);
+}
+
+mod link_stylesheet_tests {
+    use super::*;
+
+    #[test]
+    fn test_link_stylesheet_href_collected() {
+        let dom = HtmlParser::parse(
+            r#"<html><head><link rel="stylesheet" href="style.css"></head><body></body></html>"#,
+        );
+        let hrefs = link_stylesheets(&dom.root);
+        assert_eq!(hrefs, vec!["style.css"]);
+    }
+
+    #[test]
+    fn test_link_non_stylesheet_ignored() {
+        let dom = HtmlParser::parse(
+            r#"<html><head><link rel="icon" href="favicon.ico"></head><body></body></html>"#,
+        );
+        let hrefs = link_stylesheets(&dom.root);
+        assert!(hrefs.is_empty(), "icon link must not appear in stylesheet hrefs");
+    }
+
+    #[test]
+    fn test_multiple_link_stylesheets() {
+        let dom = HtmlParser::parse(
+            r#"<html><head>
+              <link rel="stylesheet" href="a.css">
+              <link rel="stylesheet" href="b.css">
+              <link rel="icon" href="favicon.ico">
+            </head><body></body></html>"#,
+        );
+        let hrefs = link_stylesheets(&dom.root);
+        assert_eq!(hrefs.len(), 2);
+        assert!(hrefs.contains(&"a.css".to_string()));
+        assert!(hrefs.contains(&"b.css".to_string()));
+    }
+
+    #[test]
+    fn test_no_links_returns_empty() {
+        let dom = HtmlParser::parse("<html><body><p>hello</p></body></html>");
+        assert!(link_stylesheets(&dom.root).is_empty());
+    }
 }

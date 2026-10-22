@@ -279,3 +279,33 @@ impl HtmlParser {
         result
     }
 }
+
+/// Collect the `href` values of every `<link rel="stylesheet" href="...">` in `root`.
+/// Returns raw href strings — callers are responsible for URL resolution.
+pub fn link_stylesheets(root: &Node) -> Vec<String> {
+    let mut hrefs = Vec::new();
+    collect_link_hrefs(root, &mut hrefs, 0);
+    hrefs
+}
+
+fn collect_link_hrefs(node: &Node, out: &mut Vec<String>, depth: usize) {
+    if depth >= 512 {
+        return;
+    }
+    use crate::engine::dom::NodeType;
+    if let NodeType::Element(e) = &node.node_type {
+        if e.tag_name == "link" {
+            let rel = e.attributes.get("rel").map(|s| s.as_str()).unwrap_or("");
+            if rel.split_whitespace().any(|r| r.eq_ignore_ascii_case("stylesheet")) {
+                if let Some(href) = e.attributes.get("href") {
+                    if !href.is_empty() {
+                        out.push(href.clone());
+                    }
+                }
+            }
+        }
+    }
+    for child in &node.children {
+        collect_link_hrefs(child, out, depth + 1);
+    }
+}
