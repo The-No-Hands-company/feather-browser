@@ -126,6 +126,12 @@ impl CssParser {
         Stylesheet { rules }
     }
 
+    /// Parses a bare declaration list, as found in an element's `style` attribute.
+    pub fn parse_inline_declarations(raw: &str) -> Vec<Declaration> {
+        let mut p = CssParser { pos: 0, input: raw.chars().collect() };
+        p.parse_declarations()
+    }
+
     fn parse_rules(&mut self) -> Vec<Rule> {
         let mut rules = Vec::new();
         loop {

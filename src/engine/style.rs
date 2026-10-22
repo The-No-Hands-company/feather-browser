@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-use crate::engine::css::{Combinator, PropertyMap, Rule, Selector, Stylesheet, Unit, Value};
+use crate::engine::css::{Combinator, CssParser, PropertyMap, Rule, Selector, Stylesheet, Unit, Value};
 use crate::engine::dom::{ElementData, Node, NodeType};
 
 #[derive(Debug, Clone)]
@@ -94,6 +94,12 @@ fn specified_values(
     for (rule, _) in rules {
         for (name, value) in &rule.declarations {
             map.insert(name.clone(), value.clone());
+        }
+    }
+    // Inline `style` attribute declarations override stylesheet rules.
+    if let Some(style) = elem.attributes.get("style") {
+        for (name, value) in CssParser::parse_inline_declarations(style) {
+            map.insert(name, value);
         }
     }
     map
