@@ -101,6 +101,8 @@ pub struct InlineFormattingContext {
     pub font_size: f32,
     pub available_width: f32,
     pub align: TextAlign,
+    /// CSS `line-height` resolved to px. None = use font metrics.
+    pub line_height_override: Option<f32>,
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -190,7 +192,11 @@ impl InlineFormattingContext {
                     font_italic: item.font_italic,
                 });
                 cursor_x = x + w;
-                cur_line_height = cur_line_height.max(item_font.line_height);
+                let effective_lh = self
+                    .line_height_override
+                    .unwrap_or(item_font.line_height)
+                    .max(item_font.line_height);
+                cur_line_height = cur_line_height.max(effective_lh);
                 cur_baseline = cur_baseline.max(item_font.ascent);
             }
         }
@@ -479,10 +485,21 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 },
                 BoxType::Anonymous => TextAlign::Left,
             };
+            let line_height_override = match &lb.box_type {
+                BoxType::Block(s) | BoxType::Inline(s) => {
+                    match s.properties.get("line-height") {
+                        Some(Value::Length(n, Unit::Px)) => Some(*n),
+                        Some(Value::Number(n)) => Some(*n * font_size),
+                        _ => None,
+                    }
+                }
+                BoxType::Anonymous => None,
+            };
             let ifc = InlineFormattingContext {
                 font_size,
                 available_width: lb.dimensions.content.width.max(1.0),
                 align,
+                line_height_override,
             };
             let (line_boxes, height) = ifc.layout(&items);
             lb.line_boxes = line_boxes;

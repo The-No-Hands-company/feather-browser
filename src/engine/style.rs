@@ -35,7 +35,14 @@ fn style_tree_depth(
     };
 
     // Inherit inheritable properties from parent when not explicitly set.
-    const INHERITABLE: &[&str] = &["color", "font-size", "text-align", "font-weight", "font-style"];
+    const INHERITABLE: &[&str] = &[
+        "color",
+        "font-size",
+        "text-align",
+        "font-weight",
+        "font-style",
+        "line-height",
+    ];
     for prop in INHERITABLE {
         if !properties.contains_key(*prop) {
             if let Some(v) = parent_props.get(*prop) {
