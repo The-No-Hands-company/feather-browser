@@ -8,6 +8,64 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+### Engine primitives in progress (0.0.9)
+- `text-align` inheritance through the style tree
+- `rem`/`%` font-size → px conversion
+- `<img>` placeholder rendering (grey box with alt-text label)
+- LRU cap on the glyph cache (unbounded growth fix)
+
+---
+
+## [0.0.8] — 2026-10-22
+
+### Added
+- `CssColor::DARK` constant (`rgb(30, 30, 30)`) in `css.rs` alongside `BLACK`, `WHITE`, `TRANSPARENT`
+- `TextAlign` enum (`Left` | `Center` | `Right`) in `layout.rs`
+- `text-align: center` and `text-align: right` support in `InlineFormattingContext` — items shifted per line after flush
+- `layout_block()` reads `text-align` from the CSS cascade and passes `TextAlign` to the IFC
+
+### Fixed
+- `pen_x` accumulation in `render_text()` converted from `i32` to `f32` — eliminates subpixel drift on long text lines
+- Default text color in `render_text()` and `render_text_scrolled()` uses `CssColor::DARK` constant (was a repeated literal)
+
+### Tests added
+- `test_dark_color_constant_value` — verifies `CssColor::DARK` RGBA values
+- `test_pen_advance_f32_accumulation` — regression guard for pen_x drift
+- `test_text_align_left_is_default`, `test_text_align_center_offsets_items`, `test_text_align_right_offsets_items`, `test_text_align_center_via_css`
+
+---
+
+## [0.0.7] — 2026-10-22
+
+### Added
+- CSS property inheritance: `color`, `font-size`, `font-family`, `text-align`, `line-height`, `font-weight`, `font-style` propagate from parent to child nodes in the style tree
+- `em` unit resolution: `font-size: 1.5em` resolves against the computed parent font-size; fallback to 16 px base when parent is unset
+- `style_tree()` and `style_node()` in `style.rs` now accept a parent `ComputedStyle` and thread it through the tree
+
+### Tests added
+- `test_color_inheritance`, `test_font_size_inheritance`, `test_em_resolution`, `test_em_child_of_em`, `test_explicit_value_overrides_inherited`, `test_non_inherited_property_not_propagated`
+
+---
+
+## [0.0.6] — 2026-10-22
+
+### Added
+- `font.rs` — three-level glyph cache: per-size `fontdue::Font` instances, rasterized `GlyphBitmap` per `(char, px_size)`, `rasterize_cached()` API
+- `GlyphBitmap` struct with `width`, `height`, `advance_width: f32`, `bearing_y: i32`, `bitmap: Vec<u8>`
+- `blit_glyph()` in `render.rs` — alpha-composite glyph bitmap onto BGRA `Canvas`
+- `render_text()` and `render_text_scrolled()` use fontdue for actual glyph rasterization (replaces grey-rectangle placeholder)
+- `InlineFormattingContext` in `layout.rs` — lays out inline items, accumulates line width, breaks on available width
+- Anonymous box wrapping for inline children of block boxes
+- `parent_color` threaded through `BoxType::Anonymous` so inline text inherits the correct color
+
+### Fixed
+- Text was rendered as grey rectangles; now renders actual font glyphs at the correct baseline
+
+### Tests added
+- `engine_font_test.rs` — glyph cache hit/miss, advance width, multi-size independence
+- `engine_render_test.rs` — pen-advance regression test (threshold 25 columns)
+- `engine_inline_test.rs` — IFC item placement, line breaking, available-width clamping
+
 ---
 
 ## [0.2.0] — 2026-10-21

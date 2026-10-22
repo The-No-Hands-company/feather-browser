@@ -9,6 +9,14 @@ Feather Browser is developed by [The No Hands Company](https://tnhc.dev) under t
 
 ---
 
+## ⚠️ Current State — Honest Assessment
+
+**Feather is not a usable browser yet.** The GTK4 shell exists and compiles, and the FeatherRenderer engine can parse HTML/CSS and render text with a CPU rasterizer — but it cannot load real web pages, has no scrolling, no JavaScript, and very limited CSS coverage.
+
+The project is in the **0.0.x engine primitive tier**: building the foundational renderer piece by piece. A browseable build is a `0.x.0` milestone goal; a full browser is `1.0.0`.
+
+---
+
 ## Philosophy
 
 - **Privacy is an engineering obligation**, not a checkbox.
@@ -18,14 +26,28 @@ Feather Browser is developed by [The No Hands Company](https://tnhc.dev) under t
 
 ---
 
-## Status
+## Versioning
+
+| Tier | Meaning |
+|------|---------|
+| `0.0.x` | Engine primitives — renderer, layout, CSS properties, font cache, text rendering. **Current tier.** |
+| `0.x.0` | Subsystem milestones — each minor bump completes a major subsystem (networking, JS engine, full CSS, images, security sandbox, web APIs). |
+| `1.0.0` | Complete browser — renders any real website. HTML5, CSS3+, JavaScript, HTTP/HTTPS, security, DOM events. |
+| `2.0.0+` | First new major feature added to the complete browser (e.g. privacy network, sync, extensions). |
+
+---
+
+## Milestone Status
 
 | Milestone | Status |
 |-----------|--------|
-| v0.1 — GTK4 shell, tabs, WebKit rendering | ✅ Complete |
-| v0.2 — Ad blocker, privacy URL stripping, tab hibernation | ✅ Complete |
-| v0.3 — FeatherRenderer (custom engine, no WebKit) | ✅ Complete |
-| v0.4 — Async fetch, text rendering, scroll, full CSS | 🔜 Next |
+| **0.1.0** — GTK4 shell, tab model, WebKit rendering | ✅ Complete |
+| **0.2.0** — Ad blocker, privacy URL stripping, tab hibernation | ✅ Complete |
+| **0.0.6** — fontdue glyph cache, CPU rasterizer renders real text | ✅ Complete |
+| **0.0.7** — CSS property inheritance, `em` unit resolution in style tree | ✅ Complete |
+| **0.0.8** — `text-align: center/right`, `CssColor` constants, `pen_x` f32 accumulation | ✅ Complete |
+| **0.0.9** — next engine primitive (planned: `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU) | 🔜 Planned |
+| **0.3.0** — First browseable pages via FeatherRenderer (networking, scrolling, full inline layout) | 🔜 Planned |
 
 ---
 
@@ -39,9 +61,12 @@ Feather Browser is developed by [The No Hands Company](https://tnhc.dev) under t
 - **WebKit rendering** — pages rendered by WebKitGTK (feature flag: `webkit-renderer`)
 - **FeatherRenderer** — native HTML/CSS/layout/rasterizer pipeline, no WebKit dependency (feature flag: `feather-renderer`)
   - HTML5 parser with error recovery and void-element handling
-  - CSS parser with specificity cascade
-  - Block layout engine
+  - CSS parser with specificity cascade, property inheritance, and `em` unit resolution
+  - Block layout engine with `text-align: left/center/right`
+  - Inline formatting context with glyph-accurate text placement (fontdue)
   - CPU rasterizer — software pixel buffer rendered via Cairo
+  - Color constants: `CssColor::DARK`, `BLACK`, `WHITE`, `TRANSPARENT`
+  - Subpixel-accurate pen advance (`f32` accumulation, not integer)
   - Referer suppressed, response capped at 10 MB, UA stylesheet hides `<head>`/`<script>` content
 
 ---
@@ -55,17 +80,20 @@ Feather Browser is developed by [The No Hands Company](https://tnhc.dev) under t
 │          PageRenderer trait             │  Abstraction layer
 ├──────────────────┬──────────────────────┤
 │  WebKitRenderer  │   FeatherRenderer    │  Pluggable backends
-│   (v0.1–v0.2)    │      (v0.3+)         │
+│   (0.1–0.2)      │      (0.0.6+)        │
 └──────────────────┴──────────┬───────────┘
                               │
               ┌───────────────┼───────────────┐
               │               │               │
-         HTML parser     CSS parser      Layout engine
-              │               │               │
+         HTML parser     CSS parser      Style tree
+              │               │          (inheritance)
               └───────────────┴───────────────┘
                               │
+                       Block layout engine
+                     (InlineFormattingContext)
+                              │
                        CPU Rasterizer
-                       (Cairo surface)
+                    (fontdue + Cairo surface)
 ```
 
 The `PageRenderer` trait decouples the shell from the rendering engine entirely. Switching from WebKit to the custom FeatherRenderer is a compile-time feature flag.
@@ -78,9 +106,10 @@ src/
   engine/        # HTML parser, CSS parser, layout, rasterizer, network fetch
     dom.rs       #   DOM node tree
     html.rs      #   HTML5 parser
-    css.rs       #   CSS parser + cascade
-    style.rs     #   Style tree builder
-    layout.rs    #   Block layout engine
+    css.rs       #   CSS parser + cascade + CssColor constants
+    style.rs     #   Style tree builder with inheritance + em resolution
+    layout.rs    #   Block layout + InlineFormattingContext + text-align
+    font.rs      #   Three-level glyph cache (fontdue)
     render.rs    #   CPU rasterizer (Canvas → Cairo BGRA buffer)
     network.rs   #   HTTP/HTTPS fetch (reqwest, 10 MB cap, no Referer)
   features/      # AdBlocker, Privacy, HibernationManager
@@ -88,6 +117,12 @@ src/
   shell/         # Window, toolbar, tab bar, tab manager, address bar
   main.rs        # GTK4 app entry point
   lib.rs         # Library root (for integration tests)
+tests/
+  engine_style_test.rs   # CSS inheritance + em resolution
+  engine_layout_test.rs  # Block layout + text-align
+  engine_inline_test.rs  # InlineFormattingContext
+  engine_font_test.rs    # Glyph cache
+  engine_render_test.rs  # CPU rasterizer + pen_x regression
 ```
 
 ---
@@ -121,11 +156,11 @@ sudo pacman -S gtk4 webkit2gtk-4.1
 ## Building
 
 ```sh
-# Default build (includes WebKit renderer)
-cargo build --release
-
 # Native FeatherRenderer — no WebKit dependency required
 cargo build --release --no-default-features --features feather-renderer
+
+# WebKit renderer (default build — requires libwebkit2gtk-4.1)
+cargo build --release
 
 # Without any renderer (mock — for CI / headless testing)
 cargo build --release --no-default-features
@@ -146,13 +181,13 @@ Settings are read from `~/.config/feather/config.json` on first run. A default b
 ## Testing
 
 ```sh
-# Full test suite — 36 tests, no system deps needed beyond GTK4 headers
+# Core engine tests — no system deps beyond GTK4 headers
 cargo test --no-default-features
 
-# Compile-check the FeatherRenderer pipeline
-cargo check --features feather-renderer
+# FeatherRenderer pipeline — compile-check + run engine tests
+cargo test --features feather-renderer
 
-# Compile-check the WebKit renderer
+# Compile-check WebKit renderer
 cargo check --features webkit-renderer
 ```
 
@@ -168,7 +203,7 @@ cargo check --features webkit-renderer
   "adblock_enabled": true,
   "auto_hibernate_delay_secs": 30,
   "zoom_default": 1.0,
-  "renderer": "webkit"
+  "renderer": "feather"
 }
 ```
 
@@ -176,24 +211,29 @@ The ad blocker reads domains from `~/.config/feather/blocklist.txt` (hosts forma
 
 ---
 
-## Known Limitations (v0.3)
+## Known Limitations (engine primitive tier — 0.0.x)
 
-- **FeatherRenderer renders block layout only** — floats, flexbox, grid, and inline text flow are not yet implemented.
-- **Text is rendered as grey rectangles** — font rasterization (fontdue integration) is deferred to v0.4.
+- **No network loading** — FeatherRenderer cannot fetch and render live URLs yet; networking is a 0.3.0 milestone goal.
 - **No scrolling** — pages taller than the viewport are clipped.
+- **Inline layout is partial** — `InlineFormattingContext` handles `text-align` left/center/right, but floats, flexbox, and grid are not implemented.
+- **`text-align` is not inherited** — must be set explicitly on each element; inheritance is deferred to 0.0.9.
+- **No `rem` or `%` font-size** — `em` resolves correctly; `rem` falls back to 16 px base; `%` not yet converted.
+- **Glyph cache is unbounded** — no LRU cap; long-running sessions accumulate glyphs. Planned fix in 0.0.9.
 - **CSS coverage is limited** — shorthand properties (`margin`, `padding`, `border`), pseudo-classes, and most selectors beyond tag/class/id are not yet parsed.
-- **Ad blocker blocks navigation-level requests only** — subresource loads (scripts, images, XHR) require WebKit content filters, planned for a future release.
-- **Tab hibernation timer fires every 10s** but `on_tab_switched` is not yet wired to tab bar clicks — hibernation is partially functional.
+- **Ad blocker blocks navigation-level requests only** — subresource blocking requires WebKit content filters, planned for a future release.
 - **Shield and freeze toggles** in the toolbar are visible but not yet wired to runtime behavior.
 
 ---
 
 ## Roadmap
 
-- **v0.3** — FeatherRenderer: custom layout/paint engine replacing WebKit entirely ✅
-- **v0.4** — Async fetch pipeline, font rasterization, scrolling, inline layout, broader CSS support
-- **v0.5** — WebKit content filters for full subresource ad/tracker blocking
-- **v0.6** — Ephemeral mode, per-site permissions, first-party isolation
+See [CHANGELOG.md](CHANGELOG.md) for what has shipped. Upcoming milestones:
+
+- **0.0.9** — engine primitives: `text-align` inheritance, `rem`/`%` font-size, `<img>` placeholder, glyph cache LRU cap
+- **0.3.0** — first browseable build: networking, scrolling, full inline layout
+- **0.4.0** — JavaScript runtime integration
+- **0.5.0** — WebKit content filters for full subresource ad/tracker blocking
+- **1.0.0** — complete browser: renders any website, HTML5 + CSS3 + JS, HTTP/HTTPS, security sandbox
 
 ---
 

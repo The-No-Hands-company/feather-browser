@@ -27,6 +27,7 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md). D
 3. **Run the test suite** before opening a PR:
    ```sh
    cargo test --no-default-features
+   cargo test --features feather-renderer
    cargo check --features webkit-renderer
    ```
 4. **Follow the code style:**
