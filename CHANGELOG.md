@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.6] — 2026-10-22
+
+### Added
+- `TextDecoration` enum (`None`, `Underline`, `LineThrough`) in `layout.rs`
+- `PlacedInlineItem::text_decoration` and `InlineText::text_decoration` fields — decoration propagates from CSS cascade through IFC layout to placed items
+- `collect_inline_text` reads `text-decoration` from inline styled nodes; `layout_block` reads it from block cascade
+- `render.rs`: underline drawn 1px below descent, line-through drawn at ~30% ascent height; both use item's color
+
+### Tests
+- `engine_css_test.rs`: `test_text_decoration_underline_parsed`, `test_text_decoration_line_through_parsed`, `test_text_decoration_none_parsed`
+- `engine_layout_test.rs`: `test_text_decoration_underline_in_layout`, `test_text_decoration_line_through_in_layout`
+
 ## [0.3.5] — 2026-10-22
 
 ### Added

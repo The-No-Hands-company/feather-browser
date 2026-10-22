@@ -2,7 +2,7 @@
 #[cfg(feature = "feather-renderer")]
 mod inline_tests {
     use feather::engine::css::CssColor;
-    use feather::engine::layout::{InlineFormattingContext, InlineText, TextAlign};
+    use feather::engine::layout::{InlineFormattingContext, InlineText, TextAlign, TextDecoration};
 
     fn text_item(s: &str) -> InlineText {
         InlineText {
@@ -11,6 +11,7 @@ mod inline_tests {
             font_size: 16.0,
             font_bold: false,
             font_italic: false,
+            text_decoration: TextDecoration::None,
         }
     }
 

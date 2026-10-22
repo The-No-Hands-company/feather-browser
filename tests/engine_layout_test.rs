@@ -76,6 +76,7 @@ mod layout_tests {
     use feather::engine::html::HtmlParser;
     use feather::engine::layout::{
         InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign,
+        TextDecoration,
     };
     use feather::engine::style::style_tree;
 
@@ -99,6 +100,7 @@ mod layout_tests {
             font_size: 16.0,
             font_bold: false,
             font_italic: false,
+            text_decoration: TextDecoration::None,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -124,6 +126,7 @@ mod layout_tests {
             font_size: 16.0,
             font_bold: false,
             font_italic: false,
+            text_decoration: TextDecoration::None,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -156,6 +159,7 @@ mod layout_tests {
             font_size: 16.0,
             font_bold: false,
             font_italic: false,
+            text_decoration: TextDecoration::None,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -195,6 +199,48 @@ mod layout_tests {
              layout_block() may not be reading text-align from the style tree",
             line_boxes[0].items[0].x
         );
+    }
+
+    #[test]
+    fn test_text_decoration_underline_in_layout() {
+        let items = vec![InlineText {
+            text: "underlined".to_string(),
+            color: CssColor::BLACK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::Underline,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 800.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].items[0].text_decoration, TextDecoration::Underline);
+    }
+
+    #[test]
+    fn test_text_decoration_line_through_in_layout() {
+        let items = vec![InlineText {
+            text: "struck".to_string(),
+            color: CssColor::BLACK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::LineThrough,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 800.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0].items[0].text_decoration, TextDecoration::LineThrough);
     }
 }
 
