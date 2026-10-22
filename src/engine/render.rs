@@ -139,7 +139,17 @@ fn render_box(
     } else {
         render_text_scrolled(canvas, lb, scroll_y);
     }
+    let overflow_hidden = has_overflow_hidden(lb);
     for child in &lb.children {
+        if overflow_hidden {
+            let pb = lb.dimensions.border_box();
+            let cb = child.dimensions.border_box();
+            let outside = cb.x + cb.width <= pb.x
+                || cb.x >= pb.x + pb.width
+                || cb.y + cb.height <= pb.y
+                || cb.y >= pb.y + pb.height;
+            if outside { continue; }
+        }
         render_box(canvas, child, font, scroll_y, depth + 1);
     }
 }
@@ -152,7 +162,17 @@ fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
     render_background(canvas, lb);
     render_borders(canvas, lb);
     render_text(canvas, lb);
+    let overflow_hidden = has_overflow_hidden(lb);
     for child in &lb.children {
+        if overflow_hidden {
+            let pb = lb.dimensions.border_box();
+            let cb = child.dimensions.border_box();
+            let outside = cb.x + cb.width <= pb.x
+                || cb.x >= pb.x + pb.width
+                || cb.y + cb.height <= pb.y
+                || cb.y >= pb.y + pb.height;
+            if outside { continue; }
+        }
         render_box_plain(canvas, child, depth + 1);
     }
 }
@@ -432,6 +452,14 @@ fn render_text_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
         height: 14.0,
     };
     canvas.fill_rect(rect, font_color);
+}
+
+fn has_overflow_hidden(lb: &LayoutBox) -> bool {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) =>
+            matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden"),
+        BoxType::Anonymous => false,
+    }
 }
 
 fn get_color(lb: &LayoutBox, prop: &str) -> Option<CssColor> {

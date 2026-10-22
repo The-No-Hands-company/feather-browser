@@ -472,3 +472,47 @@ mod min_max_width_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod display_none_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{BoxType, LayoutBox, LayoutEngine},
+        style::style_tree,
+    };
+    use feather::engine::dom::NodeType;
+
+    fn count_tag(lb: &LayoutBox, tag: &str) -> usize {
+        let mut n = 0;
+        if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+            if let NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == tag { n += 1; }
+            }
+        }
+        for child in &lb.children {
+            n += count_tag(child, tag);
+        }
+        n
+    }
+
+    #[test]
+    fn test_display_none_produces_no_box() {
+        let dom = HtmlParser::parse("<div><p style=\"display: none;\">hidden</p><p>visible</p></div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        assert_eq!(count_tag(&layout, "p"), 1,
+            "only one p box should exist (the visible one); display:none p must be absent");
+    }
+
+    #[test]
+    fn test_display_none_div_removes_children() {
+        let dom = HtmlParser::parse("<div><div style=\"display: none;\"><p>child</p></div><p>visible</p></div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        assert_eq!(count_tag(&layout, "p"), 1,
+            "p inside display:none div must not appear in layout tree");
+    }
+}

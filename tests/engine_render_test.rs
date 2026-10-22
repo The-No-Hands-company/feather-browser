@@ -337,3 +337,53 @@ fn test_border_color_paints_edge() {
         .any(|p| p.b == 255 && p.r == 0 && p.g == 0);
     assert!(has_blue, "canvas must contain a blue pixel from the border");
 }
+
+#[test]
+fn test_display_none_produces_no_pixels() {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    let dom = HtmlParser::parse(
+        "<div style=\"display: none; background-color: red; width: 100px; height: 100px;\"></div>"
+    );
+    let sheet = CssParser::parse("");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build(&styled, 800.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 600.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+    let red_count = canvas.pixels.iter()
+        .filter(|p| p.r == 255 && p.g == 0 && p.b == 0)
+        .count();
+    assert_eq!(red_count, 0, "display: none must produce zero red pixels");
+}
+
+#[test]
+fn test_overflow_hidden_skips_fully_outside_child() {
+    // Parent: height=0px with overflow:hidden. Child starts at same y as parent bottom.
+    // overflow:hidden fully-outside check (cb.y >= pb.y + pb.height) triggers.
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+    let dom = HtmlParser::parse(
+        "<div style=\"width: 800px; height: 0px; overflow: hidden;\">\
+         <div style=\"width: 800px; height: 100px; background-color: red;\"></div>\
+         </div>"
+    );
+    let sheet = CssParser::parse("");
+    let styled = style_tree(&dom.root, &sheet);
+    let layout = LayoutEngine::build_with_viewport(&styled, 800.0, 600.0);
+    let viewport = Rect { x: 0.0, y: 0.0, width: 800.0, height: 600.0 };
+    let canvas = Painter::paint(&layout, viewport, 16.0);
+    let red_count = canvas.pixels.iter()
+        .filter(|p| p.r == 255 && p.g == 0 && p.b == 0)
+        .count();
+    assert_eq!(red_count, 0, "child fully outside overflow:hidden parent must not paint red pixels");
+}
