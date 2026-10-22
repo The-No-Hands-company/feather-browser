@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-10-22
+
+### Added
+- `margin` shorthand fully covered by tests: 1-value and 2-value already existed;
+  3-value (top, left/right, bottom) and 4-value (top, right, bottom, left) added
+- New CSS parser tests: `test_margin_shorthand_3_values`, `test_margin_shorthand_4_values`
+- New layout tests: `test_margin_4_value_shorthand_in_layout`,
+  `test_margin_2_value_shorthand_in_layout` — verify shorthand values
+  arrive in `LayoutBox::dimensions.margin.*` through the full style + layout pipeline
+
 ## [0.3.2] — 2026-10-22
 
 ### Added

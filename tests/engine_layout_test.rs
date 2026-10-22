@@ -359,6 +359,33 @@ mod box_model_layout_tests {
     }
 
     #[test]
+    fn test_margin_4_value_shorthand_in_layout() {
+        let dom =
+            HtmlParser::parse(r#"<div style="margin: 10px 20px 30px 40px;">x</div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box");
+        assert_eq!(div.dimensions.margin.top, 10.0);
+        assert_eq!(div.dimensions.margin.right, 20.0);
+        assert_eq!(div.dimensions.margin.bottom, 30.0);
+        assert_eq!(div.dimensions.margin.left, 40.0);
+    }
+
+    #[test]
+    fn test_margin_2_value_shorthand_in_layout() {
+        let dom = HtmlParser::parse(r#"<div style="margin: 8px 16px;">x</div>"#);
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let div = first_block_box(&layout).expect("div box");
+        assert_eq!(div.dimensions.margin.top, 8.0);
+        assert_eq!(div.dimensions.margin.right, 16.0);
+        assert_eq!(div.dimensions.margin.bottom, 8.0);
+        assert_eq!(div.dimensions.margin.left, 16.0);
+    }
+
+    #[test]
     fn test_border_width_in_layout() {
         let dom = HtmlParser::parse("<div style=\"border: 4px solid black;\">hello</div>");
         let sheet = CssParser::parse("");
