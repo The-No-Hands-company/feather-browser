@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.2.8] — 2026-10-22
+
+### Added
+- `vw` and `vh` viewport units: `50vw` resolves to 50% of containing width; `50vh` resolves to 50% of viewport height
+- `LayoutEngine::build_with_viewport(root, containing_width, viewport_height)` — explicit viewport height for `vh` resolution; `build` defaults to 600px
+- `min-width` clamps block width up; `max-width` clamps block width down (px and %)
+- Explicit `height` (px/vh/vw/%) now applied for inline children too (was only block-children path)
+
 ## [0.2.7] — 2026-10-22
 
 ### Added
