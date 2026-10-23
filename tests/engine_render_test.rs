@@ -387,3 +387,55 @@ fn test_overflow_hidden_skips_fully_outside_child() {
         .count();
     assert_eq!(red_count, 0, "child fully outside overflow:hidden parent must not paint red pixels");
 }
+
+mod opacity_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+
+    fn viewport() -> Rect {
+        Rect { x: 0.0, y: 0.0, width: 200.0, height: 100.0 }
+    }
+
+    #[test]
+    fn test_opacity_zero_makes_background_invisible() {
+        let dom = HtmlParser::parse(
+            "<div style=\"background-color: red; width: 100px; height: 50px; opacity: 0.0;\"></div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 200.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        let red_count = canvas.pixels.iter()
+            .filter(|p| p.r == 255 && p.g == 0 && p.b == 0)
+            .count();
+        assert_eq!(red_count, 0, "opacity:0.0 must make red background invisible; found {red_count} red pixels");
+    }
+
+    #[test]
+    fn test_opacity_half_reduces_background_alpha() {
+        let dom = HtmlParser::parse(
+            "<div style=\"background-color: red; width: 100px; height: 50px; opacity: 0.5;\"></div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 200.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        // With opacity:0.5, red background color (r=255,g=0,b=0,a=255) gets a=128 → blends to pink.
+        // Fully white canvas: r = 255*0.5 + 255*0.5 = 255, g = 0*0.5 + 255*0.5 = 127, b = 0*0.5 + 255*0.5 = 127.
+        // No pixel should be a full saturated red (r=255, g=0, b=0).
+        let full_red_count = canvas.pixels.iter()
+            .filter(|p| p.r == 255 && p.g == 0 && p.b == 0)
+            .count();
+        assert_eq!(full_red_count, 0, "opacity:0.5 must not produce fully saturated red pixels; found {full_red_count}");
+        // At least some pixels must be non-white (blended pink must appear).
+        let non_white = canvas.pixels.iter()
+            .filter(|p| **p != feather::engine::css::CssColor::WHITE)
+            .count();
+        assert!(non_white > 0, "opacity:0.5 on a red box must produce non-white blended pixels");
+    }
+}
