@@ -43,6 +43,7 @@ fn style_tree_depth(
         "font-style",
         "line-height",
         "list-style-type",
+        "visibility",
     ];
     for prop in INHERITABLE {
         if !properties.contains_key(*prop) {

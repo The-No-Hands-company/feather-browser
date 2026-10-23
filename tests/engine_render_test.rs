@@ -388,6 +388,91 @@ fn test_overflow_hidden_skips_fully_outside_child() {
     assert_eq!(red_count, 0, "child fully outside overflow:hidden parent must not paint red pixels");
 }
 
+mod visibility_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+
+    fn viewport() -> Rect {
+        Rect { x: 0.0, y: 0.0, width: 200.0, height: 100.0 }
+    }
+
+    #[test]
+    fn test_visibility_hidden_produces_no_pixels() {
+        let dom = HtmlParser::parse(
+            "<div style=\"visibility: hidden; background-color: red; width: 100px; height: 50px;\"></div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 200.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        let red_count = canvas.pixels.iter()
+            .filter(|p| p.r == 255 && p.g == 0 && p.b == 0)
+            .count();
+        assert_eq!(red_count, 0, "visibility:hidden must produce zero red pixels; found {red_count}");
+    }
+
+    #[test]
+    fn test_visibility_hidden_differs_from_display_none() {
+        // display:none removes the element from layout; visibility:hidden keeps it.
+        // Rendered pixel count for visibility:hidden must equal the same element
+        // with no visibility property (only background is suppressed, layout unchanged),
+        // and must differ from display:none (which also collapses the layout box).
+        // We verify the simpler invariant: a visibility:hidden element with a red
+        // background produces zero red pixels, while the same element with
+        // visibility:visible produces at least one red pixel.
+        let make_canvas = |visibility: &str| {
+            let html = format!(
+                "<div style=\"display: block; visibility: {visibility}; background-color: red; width: 100px; height: 50px;\"></div>"
+            );
+            let dom = HtmlParser::parse(&html);
+            let sheet = CssParser::parse("div { display: block; }");
+            let styled = style_tree(&dom.root, &sheet);
+            let layout = LayoutEngine::build(&styled, 200.0);
+            let vp = Rect { x: 0.0, y: 0.0, width: 200.0, height: 100.0 };
+            Painter::paint(&layout, vp, 16.0)
+        };
+
+        let canvas_hidden  = make_canvas("hidden");
+        let canvas_visible = make_canvas("visible");
+
+        let red_hidden  = canvas_hidden.pixels.iter().filter(|p| p.r == 255 && p.g == 0 && p.b == 0).count();
+        let red_visible = canvas_visible.pixels.iter().filter(|p| p.r == 255 && p.g == 0 && p.b == 0).count();
+
+        assert_eq!(red_hidden,  0, "visibility:hidden must produce zero red pixels; got {red_hidden}");
+        assert!(red_visible > 0,   "visibility:visible must produce red pixels; got {red_visible}");
+    }
+
+    #[test]
+    fn test_visibility_visible_child_overrides_hidden_parent() {
+        // Parent is visibility:hidden, child explicitly sets visibility:visible.
+        // The child's background must still render.
+        let dom = HtmlParser::parse(
+            "<div style=\"visibility: hidden; background-color: red; width: 100px; height: 60px;\">\
+               <div style=\"visibility: visible; background-color: blue; width: 50px; height: 20px;\"></div>\
+             </div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 200.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        // Parent red must not appear.
+        let red_count = canvas.pixels.iter()
+            .filter(|p| p.r == 255 && p.g == 0 && p.b == 0)
+            .count();
+        assert_eq!(red_count, 0, "hidden parent must not paint red; found {red_count}");
+        // Child blue must appear.
+        let blue_count = canvas.pixels.iter()
+            .filter(|p| p.b == 255 && p.r == 0 && p.g == 0)
+            .count();
+        assert!(blue_count > 0, "visibility:visible child of hidden parent must render blue pixels");
+    }
+}
+
 mod opacity_tests {
     use feather::engine::{
         css::CssParser,
