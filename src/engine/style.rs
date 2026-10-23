@@ -53,6 +53,30 @@ fn style_tree_depth(
             }
         }
     }
+    // Inherit CSS custom properties (--name) from parent.
+    for (k, v) in parent_props {
+        if k.starts_with("--") && !properties.contains_key(k) {
+            properties.insert(k.clone(), v.clone());
+        }
+    }
+    // Resolve var(--name) references using the element's computed custom properties.
+    let props_snapshot: Vec<(String, Value)> = properties
+        .iter()
+        .filter(|(k, v)| !k.starts_with("--") && matches!(v, Value::Var(_)))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    for (prop, val) in props_snapshot {
+        if let Value::Var(ref var_name) = val {
+            if let Some(resolved) = properties.get(var_name).cloned() {
+                // Re-parse raw keyword values so `8px` becomes Length(8, Px), etc.
+                let final_val = match resolved {
+                    Value::Keyword(ref raw) => CssParser::parse_value(raw),
+                    other => other,
+                };
+                properties.insert(prop, final_val);
+            }
+        }
+    }
 
     // Resolve em: font-size: Nem -> N * parent_px.
     if let Some(Value::Length(n, Unit::Em)) = properties.get("font-size").cloned() {
@@ -172,6 +196,12 @@ fn simple_matches(elem: &ElementData, sel: &Selector) -> bool {
             "visited" => {
                 // No visit history in this engine version — :visited never matches.
                 return false;
+            }
+            "root" => {
+                // :root matches the root element; in HTML that is always <html>.
+                if elem.tag_name != "html" {
+                    return false;
+                }
             }
             _ => {
                 // Unknown pseudo-classes do not match.

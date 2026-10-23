@@ -8,6 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-23
+
+### Added
+- CSS custom properties: `--name: value` declarations stored as `Value::Keyword(raw)` in the cascade; `var(--name)` parsed as new `Value::Var(String)` variant
+- Custom properties (`--*`) are inherited from parent to child automatically
+- `var()` references resolved after the full cascade: each `Value::Var(name)` property is replaced with the looked-up custom property value from the element's computed map
+- `Value::Var(String)` variant added to the `Value` enum in `css.rs`
+
+### Tests
+- `engine_style_test.rs`: `test_css_custom_property_resolves_color`, `test_css_custom_property_inherited_by_children`
+
 ## [0.5.0] — 2026-10-23
 
 ### Milestone: CSS Box Model & Sizing
