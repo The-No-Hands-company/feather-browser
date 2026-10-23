@@ -11,16 +11,34 @@ pub struct StyledNode {
     pub children: Vec<StyledNode>,
 }
 
+/// Sibling-position metadata threaded through the style tree for structural
+/// pseudo-classes. Counts only element children (text/comment nodes excluded).
+#[derive(Debug, Clone, Copy)]
+struct SiblingPos {
+    is_first_element: bool,
+    is_last_element: bool,
+}
+
+impl SiblingPos {
+    fn root() -> Self {
+        Self { is_first_element: true, is_last_element: true }
+    }
+    fn is_only(self) -> bool {
+        self.is_first_element && self.is_last_element
+    }
+}
+
 pub fn style_tree(root: &Node, stylesheet: &Stylesheet) -> StyledNode {
-    style_tree_depth(root, stylesheet, 0, &mut Vec::new(), &PropertyMap::new())
+    style_tree_depth(root, stylesheet, 0, &mut Vec::new(), &PropertyMap::new(), SiblingPos::root())
 }
 
 fn style_tree_depth(
     root: &Node,
     stylesheet: &Stylesheet,
     depth: usize,
-    ancestors: &mut Vec<ElementData>,
+    ancestors: &mut Vec<(ElementData, SiblingPos)>,
     parent_props: &PropertyMap,
+    sibling_pos: SiblingPos,
 ) -> StyledNode {
     if depth >= 512 {
         return StyledNode {
@@ -30,7 +48,9 @@ fn style_tree_depth(
         };
     }
     let mut properties = match &root.node_type {
-        NodeType::Element(data) => specified_values(data, stylesheet, ancestors),
+        NodeType::Element(data) => {
+            specified_values(data, stylesheet, ancestors, sibling_pos)
+        }
         _ => PropertyMap::new(),
     };
 
@@ -105,19 +125,32 @@ fn style_tree_depth(
         );
     }
     let pushed = if let NodeType::Element(data) = &root.node_type {
-        ancestors.push(data.clone());
+        ancestors.push((data.clone(), sibling_pos));
         true
     } else {
         false
     };
+    // Collect indices of element children to compute structural positions.
+    let elem_child_indices: Vec<usize> = root
+        .children
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| matches!(c.node_type, NodeType::Element(_)))
+        .map(|(i, _)| i)
+        .collect();
     let mut children = Vec::new();
-    for c in &root.children {
+    for (idx, c) in root.children.iter().enumerate() {
+        let child_pos = SiblingPos {
+            is_first_element: elem_child_indices.first() == Some(&idx),
+            is_last_element: elem_child_indices.last() == Some(&idx),
+        };
         children.push(style_tree_depth(
             c,
             stylesheet,
             depth + 1,
             ancestors,
             &properties,
+            child_pos,
         ));
     }
     if pushed {
@@ -133,7 +166,8 @@ fn style_tree_depth(
 fn specified_values(
     elem: &ElementData,
     stylesheet: &Stylesheet,
-    ancestors: &[ElementData],
+    ancestors: &[(ElementData, SiblingPos)],
+    sibling_pos: SiblingPos,
 ) -> PropertyMap {
     let mut rules: Vec<(&Rule, (usize, usize, usize))> = stylesheet
         .rules
@@ -141,7 +175,7 @@ fn specified_values(
         .filter_map(|rule| {
             rule.selectors
                 .iter()
-                .filter(|sel| selector_matches(elem, sel, ancestors))
+                .filter(|sel| selector_matches(elem, sel, ancestors, sibling_pos))
                 .map(|sel| sel.specificity())
                 .max()
                 .map(|spec| (rule, spec))
@@ -163,7 +197,7 @@ fn specified_values(
     map
 }
 
-fn simple_matches(elem: &ElementData, sel: &Selector) -> bool {
+fn simple_matches(elem: &ElementData, sel: &Selector, sibling_pos: SiblingPos) -> bool {
     if let Some(ref tag) = sel.tag_name {
         if elem.tag_name != *tag {
             return false;
@@ -203,6 +237,21 @@ fn simple_matches(elem: &ElementData, sel: &Selector) -> bool {
                     return false;
                 }
             }
+            "first-child" => {
+                if !sibling_pos.is_first_element {
+                    return false;
+                }
+            }
+            "last-child" => {
+                if !sibling_pos.is_last_element {
+                    return false;
+                }
+            }
+            "only-child" => {
+                if !sibling_pos.is_only() {
+                    return false;
+                }
+            }
             _ => {
                 // Unknown pseudo-classes do not match.
                 return false;
@@ -212,8 +261,13 @@ fn simple_matches(elem: &ElementData, sel: &Selector) -> bool {
     true
 }
 
-fn selector_matches(elem: &ElementData, sel: &Selector, ancestors: &[ElementData]) -> bool {
-    if !simple_matches(elem, sel) {
+fn selector_matches(
+    elem: &ElementData,
+    sel: &Selector,
+    ancestors: &[(ElementData, SiblingPos)],
+    sibling_pos: SiblingPos,
+) -> bool {
+    if !simple_matches(elem, sel, sibling_pos) {
         return false;
     }
 
@@ -255,7 +309,8 @@ fn selector_matches(elem: &ElementData, sel: &Selector, ancestors: &[ElementData
                     Combinator::Descendant => seen[j - 1],
                 }
             };
-            row[j] = linked && simple_matches(&ancestors[i], tokens[j]);
+            let (anc_elem, anc_pos) = &ancestors[i];
+            row[j] = linked && simple_matches(anc_elem, tokens[j], *anc_pos);
         }
         for j in 0..n {
             seen[j] |= row[j];

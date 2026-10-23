@@ -575,3 +575,111 @@ mod selector_tests {
         );
     }
 }
+
+#[cfg(feature = "feather-renderer")]
+mod structural_pseudo_class_tests {
+    use feather::engine::{
+        css::{CssColor, CssParser, Value},
+        html::HtmlParser,
+        style::style_tree,
+    };
+
+    fn find_by_tag<'a>(
+        node: &'a feather::engine::style::StyledNode,
+        tag: &str,
+    ) -> Option<&'a feather::engine::style::StyledNode> {
+        if node.node.tag_name() == Some(tag) {
+            return Some(node);
+        }
+        node.children.iter().find_map(|c| find_by_tag(c, tag))
+    }
+
+    fn find_all_by_tag<'a>(
+        node: &'a feather::engine::style::StyledNode,
+        tag: &str,
+        out: &mut Vec<&'a feather::engine::style::StyledNode>,
+    ) {
+        if node.node.tag_name() == Some(tag) {
+            out.push(node);
+        }
+        for c in &node.children {
+            find_all_by_tag(c, tag, out);
+        }
+    }
+
+    #[test]
+    fn test_first_child_matches_first_element() {
+        let dom = HtmlParser::parse("<ul><li>A</li><li>B</li><li>C</li></ul>");
+        let sheet = CssParser::parse("li:first-child { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 3, "expected 3 li elements");
+        let red = CssColor { r: 255, g: 0, b: 0, a: 255 };
+        assert_eq!(lis[0].properties.get("color"), Some(&Value::Color(red)),
+            "first <li> should have red color from :first-child");
+        assert_ne!(lis[1].properties.get("color"), Some(&Value::Color(red)),
+            "second <li> should NOT match :first-child");
+        assert_ne!(lis[2].properties.get("color"), Some(&Value::Color(red)),
+            "third <li> should NOT match :first-child");
+    }
+
+    #[test]
+    fn test_last_child_matches_last_element() {
+        let dom = HtmlParser::parse("<ul><li>A</li><li>B</li><li>C</li></ul>");
+        let sheet = CssParser::parse("li:last-child { color: blue; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 3, "expected 3 li elements");
+        let blue = CssColor { r: 0, g: 0, b: 255, a: 255 };
+        assert_ne!(lis[0].properties.get("color"), Some(&Value::Color(blue)),
+            "first <li> should NOT match :last-child");
+        assert_ne!(lis[1].properties.get("color"), Some(&Value::Color(blue)),
+            "second <li> should NOT match :last-child");
+        assert_eq!(lis[2].properties.get("color"), Some(&Value::Color(blue)),
+            "last <li> should have blue color from :last-child");
+    }
+
+    #[test]
+    fn test_only_child_matches_sole_element() {
+        let dom = HtmlParser::parse("<div><p>solo</p></div>");
+        let sheet = CssParser::parse("p:only-child { color: green; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        let green = CssColor { r: 0, g: 128, b: 0, a: 255 };
+        assert_eq!(p.properties.get("color"), Some(&Value::Color(green)),
+            "sole <p> should match :only-child");
+    }
+
+    #[test]
+    fn test_only_child_does_not_match_with_siblings() {
+        let dom = HtmlParser::parse("<div><p>A</p><p>B</p></div>");
+        let sheet = CssParser::parse("p:only-child { color: green; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut ps = Vec::new();
+        find_all_by_tag(&styled, "p", &mut ps);
+        assert_eq!(ps.len(), 2);
+        let green = CssColor { r: 0, g: 128, b: 0, a: 255 };
+        assert_ne!(ps[0].properties.get("color"), Some(&Value::Color(green)),
+            "first <p> should NOT match :only-child when sibling exists");
+        assert_ne!(ps[1].properties.get("color"), Some(&Value::Color(green)),
+            "second <p> should NOT match :only-child when sibling exists");
+    }
+
+    #[test]
+    fn test_first_child_specificity_beats_plain_tag() {
+        let dom = HtmlParser::parse("<ul><li>A</li><li>B</li></ul>");
+        // li:first-child has higher specificity than li, so it wins for the first item.
+        let sheet = CssParser::parse("li { color: black; } li:first-child { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        let red = CssColor { r: 255, g: 0, b: 0, a: 255 };
+        let black = CssColor { r: 0, g: 0, b: 0, a: 255 };
+        assert_eq!(lis[0].properties.get("color"), Some(&Value::Color(red)),
+            "first <li> should get :first-child (higher specificity) color");
+        assert_eq!(lis[1].properties.get("color"), Some(&Value::Color(black)),
+            "second <li> should get plain li color");
+    }
+}
