@@ -8,6 +8,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.9] — 2026-10-23
+
+### Added
+- UA stylesheet in `feather_renderer.rs` now includes `a{color:#0000EE;text-decoration:underline}` — links render blue and underlined by default, overridable by author CSS
+
+### Tests
+- `engine_style_test.rs`: `test_anchor_ua_color_applied`, `test_anchor_ua_text_decoration_applied`, `test_anchor_color_overridable_by_author`
+
 ## [0.3.8] — 2026-10-23
 
 ### Added
