@@ -229,7 +229,7 @@ fn render_box(
                         baseline_y,
                         text_color,
                     );
-                    pen_x_f += glyph.advance_width;
+                    pen_x_f += glyph.advance_width + item.letter_spacing;
                 }
                 // Draw text decoration after glyphs so it sits on top.
                 let deco_x = (origin_x + item.x) as i32;

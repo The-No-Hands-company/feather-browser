@@ -102,6 +102,7 @@ mod layout_tests {
             font_italic: false,
             text_decoration: TextDecoration::None,
             force_break: false,
+            letter_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -131,6 +132,7 @@ mod layout_tests {
             font_italic: false,
             text_decoration: TextDecoration::None,
             force_break: false,
+            letter_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -167,6 +169,7 @@ mod layout_tests {
             font_italic: false,
             text_decoration: TextDecoration::None,
             force_break: false,
+            letter_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -220,6 +223,7 @@ mod layout_tests {
             font_italic: false,
             text_decoration: TextDecoration::Underline,
             force_break: false,
+            letter_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -244,6 +248,7 @@ mod layout_tests {
             font_italic: false,
             text_decoration: TextDecoration::LineThrough,
             force_break: false,
+            letter_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -984,6 +989,7 @@ mod white_space_tests {
             font_italic: false,
             text_decoration: TextDecoration::None,
             force_break: false,
+            letter_spacing: 0.0,
         }
     }
 
@@ -1052,6 +1058,7 @@ mod white_space_pre_tests {
             font_italic: false,
             text_decoration: TextDecoration::None,
             force_break: false,
+            letter_spacing: 0.0,
         }
     }
 
@@ -1312,6 +1319,176 @@ mod inline_block_tests {
         assert_eq!(
             parent.dimensions.content.height, 50.0,
             "parent height should equal the single row height of 50px"
+        );
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+mod letter_spacing_tests {
+    use feather::engine::css::{CssParser, Value, Unit};
+    use feather::engine::html::HtmlParser;
+    use feather::engine::layout::{InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign, TextDecoration};
+    use feather::engine::css::CssColor;
+    use feather::engine::font::FontMetrics;
+    use feather::engine::style::style_tree;
+
+    fn find_first_line_box(lb: &LayoutBox) -> Option<&LineBox> {
+        if let Some(line) = lb.line_boxes.first() {
+            return Some(line);
+        }
+        for child in &lb.children {
+            if let Some(line) = find_first_line_box(child) {
+                return Some(line);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn test_letter_spacing_zero_is_default() {
+        // Without letter-spacing, item.letter_spacing must be 0.0.
+        let items = vec![InlineText {
+            text: "Hi".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines[0].items[0].letter_spacing, 0.0);
+    }
+
+    #[test]
+    fn test_letter_spacing_widens_item_width() {
+        // With letter_spacing=2px on a 3-char word, width must be wider than without.
+        let fm = FontMetrics::load(16.0);
+        let base_w = fm.measure_str("abc");
+
+        let items_no_ls = vec![InlineText {
+            text: "abc".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+        }];
+        let items_ls = vec![InlineText {
+            text: "abc".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 2.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let (lines_no_ls, _) = ifc.layout(&items_no_ls);
+        let (lines_ls, _) = ifc.layout(&items_ls);
+        let w_no_ls = lines_no_ls[0].items[0].width;
+        let w_ls = lines_ls[0].items[0].width;
+        // Each of the 3 chars adds 2px => 6px wider
+        assert!(
+            (w_ls - w_no_ls - 6.0).abs() < 0.1,
+            "expected width diff ~6px, got {:.2} vs {:.2} (diff {:.2})",
+            w_ls, w_no_ls, w_ls - w_no_ls
+        );
+        let _ = base_w; // measured, not needed beyond confirming font loads
+    }
+
+    #[test]
+    fn test_letter_spacing_inherits_from_parent() {
+        // letter-spacing on a block parent should be inherited by child inline text.
+        let dom = HtmlParser::parse("<p><span>hello</span></p>");
+        let sheet = CssParser::parse("p { letter-spacing: 3px; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let line = find_first_line_box(&layout).expect("no line boxes");
+        assert!(
+            !line.items.is_empty(),
+            "line box has no items"
+        );
+        assert_eq!(
+            line.items[0].letter_spacing, 3.0,
+            "letter-spacing should be inherited; got {:.2}",
+            line.items[0].letter_spacing
+        );
+    }
+
+    #[test]
+    fn test_letter_spacing_ifc_item_carries_value() {
+        // Confirm the PlacedInlineItem produced by IFC carries the letter_spacing value.
+        let items = vec![InlineText {
+            text: "test".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 5.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines[0].items[0].letter_spacing, 5.0);
+    }
+
+    #[test]
+    fn test_letter_spacing_causes_line_wrap_earlier() {
+        // With large letter-spacing a word that fits in nowrap-width without it must cause a wrap.
+        let narrow = 40.0_f32;
+        let ifc_ls = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: narrow,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        // Two words that would each be <40px without letter-spacing but together need wrapping with it.
+        let items = vec![InlineText {
+            text: "ab cd".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 10.0,
+        }];
+        let (lines, _) = ifc_ls.layout(&items);
+        // With 10px letter-spacing each 2-char word is wider; both shouldn't fit on 40px.
+        assert!(
+            lines.len() >= 2,
+            "with large letter-spacing wrapping must occur; got {} lines",
+            lines.len()
         );
     }
 }

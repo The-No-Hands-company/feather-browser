@@ -8,6 +8,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.5] — 2026-10-23
+
+### Added
+- `letter-spacing: Npx` — extra horizontal gap between characters in inline text
+  - Applies to all inline text: block IFC, `display: inline-block` IFC, and `white-space: pre` segments
+  - Inherited — child inline elements and anonymous text nodes pick up the parent's value
+  - Carries through to `PlacedInlineItem.letter_spacing` so the rasteriser advances the pen by `advance_width + letter_spacing` per glyph
+
+### Tests
+- `engine_layout_test.rs`: `letter_spacing_tests` module — 5 new tests:
+  - `test_letter_spacing_zero_is_default`
+  - `test_letter_spacing_widens_item_width`
+  - `test_letter_spacing_inherits_from_parent`
+  - `test_letter_spacing_ifc_item_carries_value`
+  - `test_letter_spacing_causes_line_wrap_earlier`
+
 ## [0.5.4] — 2026-10-23
 
 ### Added
