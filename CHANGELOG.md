@@ -8,6 +8,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.9] — 2026-10-23
+
+### Added
+- `:link` and `:visited` pseudo-class selector support in the CSS parser
+- `pseudo: Option<String>` field added to `Selector`; stored during `parse_simple_selector` when `:` is encountered
+- `specificity()` counts a pseudo-class as one class-level item `(0, 1, 0)` per pseudo
+- `simple_matches()` in `style.rs` checks `:link` (matches `<a href="...">`) and `:visited` (never matches — no history in this version); unknown pseudo-classes also return false
+- UA stylesheet gains `a:link{color:#0000EE;text-decoration:underline}` and `a:visited{color:#551A8B;text-decoration:underline}`
+
+### Tests
+- `engine_css_test.rs` `pseudo_class_tests`: `test_link_pseudo_parses_tag_and_pseudo`, `test_visited_pseudo_parses_correctly`, `test_pseudo_class_counts_in_specificity`, `test_no_pseudo_field_when_no_colon`
+- `engine_style_test.rs` `style_tests`: `test_link_pseudo_applies_to_anchor_with_href`, `test_link_pseudo_does_not_apply_without_href`, `test_visited_pseudo_never_matches`, `test_link_pseudo_specificity_beats_plain_tag`
+
 ## [0.4.8] — 2026-10-23
 
 ### Added

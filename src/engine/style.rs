@@ -161,6 +161,24 @@ fn simple_matches(elem: &ElementData, sel: &Selector) -> bool {
             return false;
         }
     }
+    if let Some(ref pseudo) = sel.pseudo {
+        match pseudo.as_str() {
+            "link" => {
+                // :link matches <a> elements with an href attribute.
+                if elem.tag_name != "a" || !elem.attributes.contains_key("href") {
+                    return false;
+                }
+            }
+            "visited" => {
+                // No visit history in this engine version — :visited never matches.
+                return false;
+            }
+            _ => {
+                // Unknown pseudo-classes do not match.
+                return false;
+            }
+        }
+    }
     true
 }
 

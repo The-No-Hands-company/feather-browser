@@ -860,3 +860,45 @@ mod named_color_tests {
         assert_eq!(val, Some(&Value::Color(CssColor { r: 100, g: 150, b: 200, a: 255 })));
     }
 }
+
+mod pseudo_class_tests {
+    use feather::engine::css::CssParser;
+
+    #[test]
+    fn test_link_pseudo_parses_tag_and_pseudo() {
+        // a:link { color: blue; } must produce a selector with tag_name="a" and pseudo="link".
+        let sheet = CssParser::parse("a:link { color: blue; }");
+        assert_eq!(sheet.rules.len(), 1);
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.tag_name.as_deref(), Some("a"), "tag_name must be 'a'");
+        assert_eq!(sel.pseudo.as_deref(), Some("link"), "pseudo must be 'link'");
+    }
+
+    #[test]
+    fn test_visited_pseudo_parses_correctly() {
+        // a:visited { color: purple; } must produce pseudo="visited".
+        let sheet = CssParser::parse("a:visited { color: purple; }");
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.pseudo.as_deref(), Some("visited"));
+    }
+
+    #[test]
+    fn test_pseudo_class_counts_in_specificity() {
+        // a:link must be more specific than plain a (class-level bump from pseudo).
+        let sheet = CssParser::parse("a:link { color: blue; } a { color: red; }");
+        let spec_link = sheet.rules[0].selectors[0].specificity();
+        let spec_plain = sheet.rules[1].selectors[0].specificity();
+        assert!(
+            spec_link > spec_plain,
+            "a:link specificity {spec_link:?} must beat a {spec_plain:?}"
+        );
+    }
+
+    #[test]
+    fn test_no_pseudo_field_when_no_colon() {
+        // Plain tag selector must have pseudo = None.
+        let sheet = CssParser::parse("a { color: blue; }");
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.pseudo, None);
+    }
+}
