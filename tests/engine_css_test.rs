@@ -569,6 +569,46 @@ mod border_shorthand_tests {
             "side shorthand must not set other sides"
         );
     }
+
+    #[test]
+    fn test_border_shorthand_emits_style_solid() {
+        let decls = parse_decls("div { border: 2px solid blue; }");
+        assert_eq!(
+            decls.get("border-style"),
+            Some(&Value::Keyword("solid".to_string())),
+            "border shorthand must emit border-style: solid"
+        );
+    }
+
+    #[test]
+    fn test_border_shorthand_emits_style_none() {
+        let decls = parse_decls("div { border: none; }");
+        assert_eq!(
+            decls.get("border-style"),
+            Some(&Value::Keyword("none".to_string())),
+            "border shorthand with none must emit border-style: none"
+        );
+    }
+
+    #[test]
+    fn test_border_style_standalone_none() {
+        let decls = parse_decls("div { border-style: none; }");
+        assert_eq!(
+            decls.get("border-style"),
+            Some(&Value::Keyword("none".to_string())),
+            "standalone border-style: none must be stored"
+        );
+    }
+
+    #[test]
+    fn test_border_style_standalone_solid() {
+        let decls = parse_decls("div { border-style: solid; }");
+        assert_eq!(
+            decls.get("border-style"),
+            Some(&Value::Keyword("solid".to_string())),
+            "standalone border-style: solid must be stored"
+        );
+    }
 }
 
 #[cfg(test)]

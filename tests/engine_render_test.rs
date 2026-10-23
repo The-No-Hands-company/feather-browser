@@ -524,3 +524,59 @@ mod opacity_tests {
         assert!(non_white > 0, "opacity:0.5 on a red box must produce non-white blended pixels");
     }
 }
+
+mod border_style_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{LayoutEngine, Rect},
+        render::Painter,
+        style::style_tree,
+    };
+
+    fn viewport() -> Rect {
+        Rect { x: 0.0, y: 0.0, width: 400.0, height: 200.0 }
+    }
+
+    #[test]
+    fn test_border_style_none_suppresses_border() {
+        // border: 4px solid blue gives a blue border; overriding with border-style:none must remove it.
+        let dom = HtmlParser::parse(
+            "<div style=\"border: 4px solid blue; border-style: none; background-color: white; width: 100px;\">x</div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 400.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        let blue = canvas.pixels.iter().filter(|p| p.b == 255 && p.r == 0 && p.g == 0).count();
+        assert_eq!(blue, 0, "border-style:none must suppress blue border pixels; found {blue}");
+    }
+
+    #[test]
+    fn test_border_style_solid_renders_border() {
+        // Explicit border-style:solid with color and width must paint border pixels.
+        let dom = HtmlParser::parse(
+            "<div style=\"border: 4px solid blue; background-color: white; width: 100px;\">x</div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 400.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        let blue = canvas.pixels.iter().filter(|p| p.b == 255 && p.r == 0 && p.g == 0).count();
+        assert!(blue > 0, "border-style:solid must render blue border pixels; found {blue}");
+    }
+
+    #[test]
+    fn test_border_none_shorthand_suppresses_border() {
+        // border:none is a common shorthand that must suppress all borders.
+        let dom = HtmlParser::parse(
+            "<div style=\"border: none; border-color: red; width: 100px;\">x</div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 400.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        let red = canvas.pixels.iter().filter(|p| p.r == 255 && p.g == 0 && p.b == 0).count();
+        assert_eq!(red, 0, "border:none must suppress red border pixels; found {red}");
+    }
+}

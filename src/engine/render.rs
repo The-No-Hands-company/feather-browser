@@ -246,7 +246,16 @@ fn render_background(canvas: &mut Canvas, lb: &LayoutBox) {
     canvas.fill_rect(lb.dimensions.border_box(), color);
 }
 
+fn is_border_none(lb: &LayoutBox) -> bool {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) =>
+            matches!(s.properties.get("border-style"), Some(Value::Keyword(k)) if k == "none"),
+        BoxType::Anonymous => false,
+    }
+}
+
 fn render_borders(canvas: &mut Canvas, lb: &LayoutBox) {
+    if is_border_none(lb) { return; }
     let color = match get_color(lb, "border-color") {
         Some(c) => c,
         None => return,
@@ -350,6 +359,7 @@ fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32
 
 #[cfg(feature = "feather-renderer")]
 fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, opacity: f32) {
+    if is_border_none(lb) { return; }
     let color = match get_color(lb, "border-color").map(|c| with_opacity(c, opacity)) {
         Some(c) if c.a > 0 => c,
         _ => return,
