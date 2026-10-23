@@ -370,6 +370,8 @@ pub enum Value {
     Length(f32, Unit),
     Color(CssColor),
     Number(f32),
+    /// `var(--name)` reference; resolved during style cascade.
+    Var(String),
 }
 
 #[derive(Debug, Clone)]
@@ -595,11 +597,22 @@ impl CssParser {
             .trim()
             .to_string();
         self.consume_if(';');
+        // Custom properties (--name) are stored as-is without shorthand expansion.
+        if name.starts_with("--") {
+            return vec![(name, Value::Keyword(raw))];
+        }
         expand_shorthand(&name, &raw)
     }
 
     pub fn parse_value(raw: &str) -> Value {
         let s = raw.trim();
+        // var(--name) — CSS custom property reference
+        if let Some(inner) = s.strip_prefix("var(").and_then(|r| r.strip_suffix(')')) {
+            let name = inner.split(',').next().unwrap_or("").trim();
+            if name.starts_with("--") {
+                return Value::Var(name.to_string());
+            }
+        }
         // rem must be checked before em (longer suffix first)
         if let Some(rest) = s.strip_suffix("rem") {
             if let Ok(n) = rest.trim().parse::<f32>() {

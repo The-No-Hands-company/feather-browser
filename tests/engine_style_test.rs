@@ -533,6 +533,35 @@ mod selector_tests {
     }
 
     #[test]
+    fn test_css_custom_property_resolves_color() {
+        // :root defines --brand: blue; body uses color: var(--brand) — must resolve to blue.
+        let dom = HtmlParser::parse("<body><p>text</p></body>");
+        let sheet = CssParser::parse(":root { --brand: #0000ff; } p { color: var(--brand); }");
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        // After var resolution, color must be #0000ff (blue).
+        assert_eq!(
+            p.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            "var(--brand) must resolve to the custom property value"
+        );
+    }
+
+    #[test]
+    fn test_css_custom_property_inherited_by_children() {
+        // Custom property defined on parent is available in child via var().
+        let dom = HtmlParser::parse("<div><span>text</span></div>");
+        let sheet = CssParser::parse("div { --gap: 8px; } span { font-size: var(--gap); }");
+        let styled = style_tree(&dom.root, &sheet);
+        let span = find_by_tag(&styled, "span").expect("span not found");
+        assert_eq!(
+            span.properties.get("font-size"),
+            Some(&Value::Length(8.0, feather::engine::css::Unit::Px)),
+            "var(--gap) inherited from parent must resolve to 8px"
+        );
+    }
+
+    #[test]
     fn test_link_pseudo_specificity_beats_plain_tag() {
         // a:link color must override a color when both rules are present.
         let dom = HtmlParser::parse("<a href=\"https://example.com\">click</a>");
