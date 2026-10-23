@@ -1,6 +1,6 @@
 [package]
 name = "feather"
-version = "0.3.7"
+version = "0.3.8"
 edition = "2021"
 authors = ["The No Hands Company <erichakansson84@gmail.com>"]
 description = "Feather Browser — ultra-lightweight GTK4 browser"

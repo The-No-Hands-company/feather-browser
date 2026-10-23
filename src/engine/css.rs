@@ -632,6 +632,10 @@ impl CssParser {
                 return Value::Color(c);
             }
         }
+        // rgb() / rgba()
+        if let Some(c) = parse_rgb_function(s) {
+            return Value::Color(c);
+        }
         // named color
         if let Some(c) = CssColor::from_keyword(s) {
             return Value::Color(c);
@@ -831,4 +835,31 @@ fn expand_font_shorthand(raw: &str) -> Vec<(String, Value)> {
         }
     }
     decls
+}
+
+/// Parse `rgb(r, g, b)` or `rgba(r, g, b, a)` into a `CssColor`.
+/// Components are integers 0-255; alpha is 0.0-1.0 float.
+pub(crate) fn parse_rgb_function(s: &str) -> Option<CssColor> {
+    let s = s.trim();
+    let (has_alpha, inner) = if let Some(i) = s.strip_prefix("rgba(").and_then(|t| t.strip_suffix(')')) {
+        (true, i)
+    } else if let Some(i) = s.strip_prefix("rgb(").and_then(|t| t.strip_suffix(')')) {
+        (false, i)
+    } else {
+        return None;
+    };
+    let parts: Vec<&str> = inner.split(',').collect();
+    let needed = if has_alpha { 4 } else { 3 };
+    if parts.len() != needed {
+        return None;
+    }
+    let r = parts[0].trim().parse::<f32>().ok()?.clamp(0.0, 255.0) as u8;
+    let g = parts[1].trim().parse::<f32>().ok()?.clamp(0.0, 255.0) as u8;
+    let b = parts[2].trim().parse::<f32>().ok()?.clamp(0.0, 255.0) as u8;
+    let a = if has_alpha {
+        (parts[3].trim().parse::<f32>().ok()?.clamp(0.0, 1.0) * 255.0).round() as u8
+    } else {
+        255
+    };
+    Some(CssColor { r, g, b, a })
 }
