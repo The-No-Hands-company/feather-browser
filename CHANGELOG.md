@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-10-23
+
+### Added
+- `<br>` forced line break: a `<br>` element in an inline context flushes the current line and starts a new one; `br{display:inline}` added to UA stylesheet
+- `<hr>` horizontal rule: UA stylesheet now sets `hr{display:block;border-top-width:2px;border-color:#888888;margin-top:8px;margin-bottom:8px}` — the existing border renderer draws the visible rule
+- `force_break` field on `InlineText` (internal): drives the `<br>` mechanism in `InlineFormattingContext::layout`
+
+### Tests
+- `engine_layout_test.rs`: `test_br_forces_second_line_box`, `test_br_only_produces_empty_line`, `test_hr_ua_rules_apply`
+
 ## [0.4.1] — 2026-10-23
 
 ### Added

@@ -88,6 +88,8 @@ pub struct InlineText {
     pub font_bold: bool,
     pub font_italic: bool,
     pub text_decoration: TextDecoration,
+    /// When true, flush the current line immediately (models a <br> break).
+    pub force_break: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -170,6 +172,19 @@ impl InlineFormattingContext {
         }
 
         for item in items {
+            if item.force_break {
+                flush_line!();
+                // Ensure the blank line still occupies vertical space.
+                if current_items.is_empty() {
+                    let item_font = FontMetrics::load_cached_variant(
+                        item.font_size,
+                        item.font_bold,
+                        item.font_italic,
+                    );
+                    line_y += self.line_height_override.unwrap_or(item_font.line_height);
+                }
+                continue;
+            }
             let item_font =
                 FontMetrics::load_cached_variant(item.font_size, item.font_bold, item.font_italic);
             let words: Vec<&str> = item.text.split_whitespace().collect();
@@ -374,11 +389,25 @@ fn collect_inline_text(
                             font_bold: parent_bold,
                             font_italic: parent_italic,
                             text_decoration: parent_decoration,
+                            force_break: false,
                         });
                     }
                 }
             }
             BoxType::Inline(s) => {
+                // <br> injects a forced line break.
+                if s.node.tag_name() == Some("br") {
+                    items.push(InlineText {
+                        text: String::new(),
+                        color: parent_color,
+                        font_size: parent_font_size,
+                        font_bold: parent_bold,
+                        font_italic: parent_italic,
+                        text_decoration: parent_decoration,
+                        force_break: true,
+                    });
+                    continue;
+                }
                 let color = match s.properties.get("color") {
                     Some(Value::Color(c)) => *c,
                     _ => CssColor::DARK,
@@ -435,6 +464,7 @@ fn collect_text_from_layout_children(
                     font_bold,
                     font_italic,
                     text_decoration,
+                    force_break: false,
                 });
             }
         }
@@ -533,6 +563,7 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                     font_bold: bold,
                     font_italic: italic,
                     text_decoration: TextDecoration::None,
+                    force_break: false,
                 });
             }
         }
