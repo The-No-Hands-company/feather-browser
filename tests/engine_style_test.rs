@@ -187,7 +187,7 @@ mod style_tests {
 #[cfg(test)]
 mod selector_tests {
     use feather::engine::{
-        css::{CssColor, CssParser, Value},
+        css::{CssColor, CssParser, Unit, Value},
         html::HtmlParser,
         style::{style_tree, StyledNode},
     };
@@ -390,6 +390,103 @@ mod selector_tests {
             a_node.properties.get("color"),
             Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
             "author color:red must override UA blue"
+        );
+    }
+
+    #[test]
+    fn test_h1_ua_font_size() {
+        let dom = HtmlParser::parse("<h1>Title</h1>");
+        let ua = "h1,h2,h3,h4,h5,h6{display:block;font-weight:bold}\
+            h1{font-size:32px;margin-top:21px;margin-bottom:21px}";
+        let sheet = CssParser::parse(ua);
+        let styled = style_tree(&dom.root, &sheet);
+        let h1 = find_by_tag(&styled, "h1").expect("h1 not found");
+        assert_eq!(
+            h1.properties.get("font-size"),
+            Some(&Value::Length(32.0, Unit::Px)),
+            "h1 must have UA font-size: 32px"
+        );
+        assert_eq!(
+            h1.properties.get("font-weight"),
+            Some(&Value::Keyword("bold".to_string())),
+            "h1 must have UA font-weight: bold"
+        );
+    }
+
+    #[test]
+    fn test_h2_ua_font_size() {
+        let dom = HtmlParser::parse("<h2>Sub</h2>");
+        let ua = "h1,h2,h3,h4,h5,h6{display:block;font-weight:bold}\
+            h2{font-size:24px;margin-top:19px;margin-bottom:19px}";
+        let sheet = CssParser::parse(ua);
+        let styled = style_tree(&dom.root, &sheet);
+        let h2 = find_by_tag(&styled, "h2").expect("h2 not found");
+        assert_eq!(
+            h2.properties.get("font-size"),
+            Some(&Value::Length(24.0, Unit::Px)),
+            "h2 must have UA font-size: 24px"
+        );
+    }
+
+    #[test]
+    fn test_h3_ua_font_size() {
+        let dom = HtmlParser::parse("<h3>Section</h3>");
+        let ua = "h1,h2,h3,h4,h5,h6{display:block;font-weight:bold}\
+            h3{font-size:18px}";
+        let sheet = CssParser::parse(ua);
+        let styled = style_tree(&dom.root, &sheet);
+        let h3 = find_by_tag(&styled, "h3").expect("h3 not found");
+        assert_eq!(
+            h3.properties.get("font-size"),
+            Some(&Value::Length(18.0, Unit::Px)),
+        );
+    }
+
+    #[test]
+    fn test_h1_margin_top_ua() {
+        let dom = HtmlParser::parse("<h1>Title</h1>");
+        let ua = "h1{font-size:32px;margin-top:21px;margin-bottom:21px}";
+        let sheet = CssParser::parse(ua);
+        let styled = style_tree(&dom.root, &sheet);
+        let h1 = find_by_tag(&styled, "h1").expect("h1 not found");
+        assert_eq!(
+            h1.properties.get("margin-top"),
+            Some(&Value::Length(21.0, Unit::Px)),
+            "h1 must have UA margin-top: 21px"
+        );
+    }
+
+    #[test]
+    fn test_p_ua_display_block() {
+        let dom = HtmlParser::parse("<p>text</p>");
+        let ua = "p{display:block;margin-top:16px;margin-bottom:16px}";
+        let sheet = CssParser::parse(ua);
+        let styled = style_tree(&dom.root, &sheet);
+        let p = find_by_tag(&styled, "p").expect("p not found");
+        assert_eq!(
+            p.properties.get("display"),
+            Some(&Value::Keyword("block".to_string())),
+            "p must have UA display: block"
+        );
+        assert_eq!(
+            p.properties.get("margin-top"),
+            Some(&Value::Length(16.0, Unit::Px)),
+            "p must have UA margin-top: 16px"
+        );
+    }
+
+    #[test]
+    fn test_h1_author_font_size_overrides_ua() {
+        let dom = HtmlParser::parse("<h1>Title</h1>");
+        // UA first, author second — author wins
+        let ua_then_author = "h1{font-size:32px} h1{font-size:48px}";
+        let sheet = CssParser::parse(ua_then_author);
+        let styled = style_tree(&dom.root, &sheet);
+        let h1 = find_by_tag(&styled, "h1").expect("h1 not found");
+        assert_eq!(
+            h1.properties.get("font-size"),
+            Some(&Value::Length(48.0, Unit::Px)),
+            "author font-size:48px must override UA 32px"
         );
     }
 }

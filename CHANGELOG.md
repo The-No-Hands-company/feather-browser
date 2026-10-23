@@ -8,6 +8,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-23
+
+### Added
+- UA stylesheet now includes h1–h6 block defaults: `font-weight:bold`, per-heading `font-size` (32px/24px/18px/16px/13px/11px), and top/bottom margins matching browser UA conventions
+- UA stylesheet now includes `p{display:block;margin-top:16px;margin-bottom:16px}` and `body{display:block;margin:8px}` baseline block layout
+
+### Tests
+- `engine_style_test.rs`: `test_h1_ua_font_size`, `test_h2_ua_font_size`, `test_h3_ua_font_size`, `test_h1_margin_top_ua`, `test_p_ua_display_block`, `test_h1_author_font_size_overrides_ua`
+
 ## [0.3.9] — 2026-10-23
 
 ### Added
