@@ -8,6 +8,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.3] — 2026-10-23
+
+### Added
+- `:first-child` pseudo-class — matches an element that is the first element child of its parent (text/comment nodes excluded from sibling count)
+- `:last-child` pseudo-class — matches an element that is the last element child of its parent
+- `:only-child` pseudo-class — matches when the element is the sole element child of its parent (equivalent to `:first-child:last-child`)
+- `SiblingPos` struct threaded through the full style tree — both `simple_matches` (for the subject selector) and ancestor matching in compound selectors (e.g., `li:first-child > a`) receive accurate first/last flags
+- Structural pseudo-classes count as one class-level unit in specificity (already handled by existing `pseudo` specificity rule)
+
+### Tests
+- `engine_style_test.rs`: `structural_pseudo_class_tests` module — 5 new tests:
+  - `test_first_child_matches_first_element`
+  - `test_last_child_matches_last_element`
+  - `test_only_child_matches_sole_element`
+  - `test_only_child_does_not_match_with_siblings`
+  - `test_first_child_specificity_beats_plain_tag`
+
 ## [0.5.2] — 2026-10-23
 
 ### Added
