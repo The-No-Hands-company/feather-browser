@@ -8,6 +8,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.8] — 2026-10-23
+
+### Added
+- `border-radius: Npx` support: backgrounds and borders are clipped to rounded corners
+- `inside_rounded_rect` geometry helper in `render.rs` — per-pixel corner test using circle distance
+- `Canvas::fill_rounded_rect(rect, radius, color)` — fills within rounded shape; falls back to `fill_rect` when `radius <= 0`
+- `Canvas::stroke_rounded_rect(outer, outer_r, inner, inner_r, color)` — paints only the ring between two rounded rects; used for rounded borders
+- `get_border_radius(lb) -> f32` helper reads `border-radius` property (handles `Length` and bare `Number`)
+- All four render paths updated: `render_background`, `render_borders`, `render_background_scrolled`, `render_borders_scrolled`
+
+### Tests
+- `engine_render_test.rs` `border_radius_tests`: `test_border_radius_clips_background_corners`, `test_border_radius_zero_fills_full_rect`, `test_border_radius_border_clips_corners`
+
 ## [0.4.7] — 2026-10-23
 
 ### Added

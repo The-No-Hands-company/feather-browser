@@ -580,3 +580,78 @@ mod border_style_tests {
         assert_eq!(red, 0, "border:none must suppress red border pixels; found {red}");
     }
 }
+
+mod border_radius_tests {
+    use super::*;
+
+    fn viewport() -> Rect {
+        Rect { x: 0.0, y: 0.0, width: 200.0, height: 200.0 }
+    }
+
+    #[test]
+    fn test_border_radius_clips_background_corners() {
+        // A box with border-radius:10px must produce fewer blue pixels than the same
+        // box without border-radius (corners are clipped).
+        let build = |style: &str| {
+            let html = format!("<div style=\"{}\">Hello</div>", style);
+            let dom = HtmlParser::parse(&html);
+            let sheet = CssParser::parse("");
+            let styled = style_tree(&dom.root, &sheet);
+            let layout = LayoutEngine::build(&styled, 200.0);
+            Painter::paint(&layout, viewport(), 16.0)
+        };
+        let rounded = build("background-color: blue; width: 60px; border-radius: 10px;");
+        let square  = build("background-color: blue; width: 60px;");
+        let blue_rounded = rounded.pixels.iter().filter(|p| p.b == 255 && p.r == 0 && p.g == 0).count();
+        let blue_square  = square.pixels.iter().filter(|p| p.b == 255 && p.r == 0 && p.g == 0).count();
+        assert!(blue_rounded > 0, "rounded box must still have blue pixels; got {blue_rounded}");
+        assert!(
+            blue_rounded < blue_square,
+            "border-radius must clip corners: rounded={blue_rounded} < square={blue_square}"
+        );
+    }
+
+    #[test]
+    fn test_border_radius_zero_fills_full_rect() {
+        // border-radius:0px must produce the same pixel count as no border-radius.
+        let build = |style: &str| {
+            let html = format!("<div style=\"{}\">Hello</div>", style);
+            let dom = HtmlParser::parse(&html);
+            let sheet = CssParser::parse("");
+            let styled = style_tree(&dom.root, &sheet);
+            let layout = LayoutEngine::build(&styled, 200.0);
+            Painter::paint(&layout, viewport(), 16.0)
+        };
+        let with_zero = build("background-color: blue; width: 60px; border-radius: 0px;");
+        let without   = build("background-color: blue; width: 60px;");
+        let blue_with    = with_zero.pixels.iter().filter(|p| p.b == 255 && p.r == 0 && p.g == 0).count();
+        let blue_without = without.pixels.iter().filter(|p| p.b == 255 && p.r == 0 && p.g == 0).count();
+        assert_eq!(
+            blue_with, blue_without,
+            "border-radius:0px must not clip any pixels; with={blue_with} without={blue_without}"
+        );
+    }
+
+    #[test]
+    fn test_border_radius_border_clips_corners() {
+        // A box with border-style:solid, border-color:red, border-radius:8px must
+        // have clipped (non-red) corner pixels and red border pixels elsewhere.
+        let dom = HtmlParser::parse(
+            "<div style=\"border-style: solid; border-top-width: 4px; border-right-width: 4px; border-bottom-width: 4px; border-left-width: 4px; border-color: red; width: 40px; border-radius: 8px;\"> </div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 200.0);
+        let canvas = Painter::paint(&layout, viewport(), 16.0);
+        // There must be some red border pixels
+        let red = canvas.pixels.iter().filter(|p| p.r == 255 && p.g == 0 && p.b == 0).count();
+        assert!(red > 0, "rounded border must still paint red pixels along edges; got {red}");
+        // Top-left corner must be white (clipped)
+        let tl = canvas.pixels[0];
+        assert_eq!(
+            (tl.r, tl.g, tl.b),
+            (255, 255, 255),
+            "top-left corner must be white (border clipped by border-radius)"
+        );
+    }
+}
