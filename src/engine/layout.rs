@@ -233,6 +233,8 @@ pub struct LayoutBox {
     pub text: Option<String>,
     pub children: Vec<LayoutBox>,
     pub line_boxes: Vec<LineBox>,
+    /// 1-based index within a parent <ol>; 0 for non-li or unordered list items.
+    pub list_item_index: usize,
 }
 
 impl LayoutBox {
@@ -243,6 +245,7 @@ impl LayoutBox {
             text: None,
             children: Vec::new(),
             line_boxes: Vec::new(),
+            list_item_index: 0,
         }
     }
 
@@ -504,7 +507,35 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
             }
             BoxType::Anonymous => TextDecoration::None,
         };
-        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration);
+        let mut items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration);
+        // Inject list marker for <li> elements with list-style-type.
+        let list_style = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s)
+                if s.node.tag_name() == Some("li") =>
+            {
+                s.properties.get("list-style-type").and_then(|v| {
+                    if let Value::Keyword(k) = v { Some(k.as_str()) } else { None }
+                })
+            }
+            _ => None,
+        };
+        if let Some(style) = list_style {
+            let marker_text = match style {
+                "disc" => "• ".to_string(),
+                "decimal" => format!("{}. ", lb.list_item_index),
+                _ => String::new(),
+            };
+            if !marker_text.is_empty() {
+                items.insert(0, InlineText {
+                    text: marker_text,
+                    color,
+                    font_size,
+                    font_bold: bold,
+                    font_italic: italic,
+                    text_decoration: TextDecoration::None,
+                });
+            }
+        }
         if !items.is_empty() {
             let align = match &lb.box_type {
                 BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("text-align") {
@@ -657,9 +688,22 @@ fn apply_relative_offset(lb: &mut LayoutBox) {
     lb.dimensions.content.y += dy;
 }
 
+fn is_tag(lb: &LayoutBox, tag: &str) -> bool {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) => s.node.tag_name() == Some(tag),
+        BoxType::Anonymous => false,
+    }
+}
+
 fn layout_block_children(lb: &mut LayoutBox, viewport_height: f32, depth: usize) {
     let dims = lb.dimensions;
+    let is_ordered = is_tag(lb, "ol");
+    let mut li_counter: usize = 0;
     for child in &mut lb.children {
+        if is_ordered && is_tag(child, "li") {
+            li_counter += 1;
+            child.list_item_index = li_counter;
+        }
         layout_box(child, &dims, viewport_height, depth + 1);
         lb.dimensions.content.height += child.dimensions.margin_box().height;
     }

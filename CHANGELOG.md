@@ -8,6 +8,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-10-23
+
+### Added
+- `<ul>` and `<ol>` list marker rendering: `ul` elements with `list-style-type:disc` inject a `•` bullet before each `li`'s inline text; `ol` elements with `list-style-type:decimal` inject `N.` numbered markers
+- UA stylesheet now includes `ul{display:block;padding-left:40px;list-style-type:disc}`, `ol{display:block;padding-left:40px;list-style-type:decimal}`, `li{display:block}`
+- `list-style-type` added to CSS inheritance list
+- New `list_item_index` field on `LayoutBox` tracks 1-based `<li>` position within `<ol>`
+
+### Tests
+- `engine_layout_test.rs`: `test_ul_li_disc_marker_in_line_box`, `test_ol_li_decimal_marker_in_line_box`, `test_ul_li_no_marker_without_list_style`
+
 ## [0.4.0] — 2026-10-23
 
 ### Added
