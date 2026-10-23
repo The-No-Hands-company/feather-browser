@@ -901,4 +901,44 @@ mod pseudo_class_tests {
         let sel = &sheet.rules[0].selectors[0];
         assert_eq!(sel.pseudo, None);
     }
+
+    #[test]
+    fn test_nth_child_functional_pseudo_parses() {
+        let sheet = CssParser::parse("li:nth-child(2n+1) { color: red; }");
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.tag_name.as_deref(), Some("li"));
+        assert_eq!(sel.pseudo.as_deref(), Some("nth-child(2n+1)"));
+    }
+
+    #[test]
+    fn test_nth_child_odd_parses() {
+        let sheet = CssParser::parse("tr:nth-child(odd) { background: grey; }");
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.pseudo.as_deref(), Some("nth-child(odd)"));
+    }
+
+    #[test]
+    fn test_nth_child_even_parses() {
+        let sheet = CssParser::parse("tr:nth-child(even) { background: white; }");
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.pseudo.as_deref(), Some("nth-child(even)"));
+    }
+
+    #[test]
+    fn test_nth_child_plain_number_parses() {
+        let sheet = CssParser::parse("li:nth-child(3) { font-weight: bold; }");
+        let sel = &sheet.rules[0].selectors[0];
+        assert_eq!(sel.pseudo.as_deref(), Some("nth-child(3)"));
+    }
+
+    #[test]
+    fn test_nth_child_specificity_counts_as_class() {
+        let sheet = CssParser::parse("li:nth-child(2n) { } li { }");
+        let spec_nth = sheet.rules[0].selectors[0].specificity();
+        let spec_plain = sheet.rules[1].selectors[0].specificity();
+        assert!(
+            spec_nth > spec_plain,
+            "li:nth-child has higher specificity than li"
+        );
+    }
 }
