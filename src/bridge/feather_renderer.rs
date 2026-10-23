@@ -174,7 +174,7 @@ impl FeatherRenderer {
             ol{display:block;padding-left:40px;list-style-type:decimal}\
             li{display:block}\
             br{display:inline}\
-            hr{display:block;border-top-width:2px;border-color:#888888;margin-top:8px;margin-bottom:8px}";
+            hr{display:block;border-style:solid;border-top-width:2px;border-color:#888888;margin-top:8px;margin-bottom:8px}";
         let css_text = format!("{} {} {}", ua_css, extra_css, extract_style_tags(&dom.root, 0));
         let sheet = CssParser::parse(&css_text);
         let styled = style_tree(&dom.root, &sheet);

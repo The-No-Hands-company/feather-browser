@@ -742,11 +742,18 @@ fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
             };
             let mut width: Option<Value> = None;
             let mut color: Option<Value> = None;
+            let mut style: Option<Value> = None;
             for part in raw.split_whitespace() {
                 let v = CssParser::parse_value(part);
                 match &v {
                     Value::Length(_, _) if width.is_none() => width = Some(v),
                     Value::Color(_) => color = Some(v),
+                    Value::Keyword(k)
+                        if matches!(k.as_str(), "none" | "solid" | "dashed" | "dotted" | "double")
+                            && style.is_none() =>
+                    {
+                        style = Some(v)
+                    }
                     _ => {}
                 }
             }
@@ -757,6 +764,9 @@ fn expand_shorthand(prop: &str, raw: &str) -> Vec<(String, Value)> {
             }
             if let Some(c) = color {
                 decls.push(("border-color".to_string(), c));
+            }
+            if let Some(s) = style {
+                decls.push(("border-style".to_string(), s));
             }
             decls
         }

@@ -8,6 +8,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.7] — 2026-10-23
+
+### Added
+- `border-style: none` and `border-style: solid` support: borders are suppressed when `border-style: none` regardless of width/color; `solid` renders normally
+- `border` shorthand now emits `border-style` alongside width and color (e.g. `border: 2px solid blue` → `border-style: solid`, `border: none` → `border-style: none`)
+- UA stylesheet: `hr` rule updated to include `border-style: solid` so `<hr>` borders continue rendering correctly
+- `is_border_none()` helper in `render.rs` gates both `render_borders` and `render_borders_scrolled`
+
+### Tests
+- `engine_css_test.rs` `border_shorthand_tests`: `test_border_shorthand_emits_style_solid`, `test_border_shorthand_emits_style_none`, `test_border_style_standalone_none`, `test_border_style_standalone_solid`
+- `engine_render_test.rs` `border_style_tests`: `test_border_style_none_suppresses_border`, `test_border_style_solid_renders_border`, `test_border_none_shorthand_suppresses_border`
+
 ## [0.4.6] — 2026-10-23
 
 ### Added
