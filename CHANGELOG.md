@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.8] — 2026-10-23
+
+### Added
+- `parse_rgb_function(s)` free function in `css.rs` — parses `rgb(r, g, b)` and `rgba(r, g, b, a)` into `CssColor`
+- `CssParser::parse_value` now recognises `rgb()`/`rgba()` before falling back to keywords
+- Alpha channel clamped to [0.0, 1.0] and converted to `u8`; integer channels clamped to [0, 255]
+
+### Tests
+- `engine_css_test.rs`: `test_rgb_color_parsed`, `test_rgba_color_parsed`, `test_rgba_fully_transparent`, `test_rgb_inline_style`
+
 ## [0.3.7] — 2026-10-23
 
 ### Added

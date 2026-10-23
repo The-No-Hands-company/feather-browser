@@ -777,4 +777,46 @@ mod named_color_tests {
             Some(&Value::Length(20.0, Unit::Px))
         );
     }
+
+    #[test]
+    fn test_rgb_color_parsed() {
+        let sheet = CssParser::parse("p { color: rgb(255, 0, 128); }");
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "color"),
+            Some(&Value::Color(CssColor { r: 255, g: 0, b: 128, a: 255 }))
+        );
+    }
+
+    #[test]
+    fn test_rgba_color_parsed() {
+        let sheet = CssParser::parse("p { color: rgba(10, 20, 30, 0.5); }");
+        let val = find_decl(&sheet.rules[0].declarations, "color");
+        if let Some(Value::Color(c)) = val {
+            assert_eq!(c.r, 10);
+            assert_eq!(c.g, 20);
+            assert_eq!(c.b, 30);
+            // 0.5 * 255 = 127.5 → rounds to 128
+            assert_eq!(c.a, 128);
+        } else {
+            panic!("expected Value::Color, got {:?}", val);
+        }
+    }
+
+    #[test]
+    fn test_rgba_fully_transparent() {
+        let sheet = CssParser::parse("p { color: rgba(0, 0, 0, 0.0); }");
+        if let Some(Value::Color(c)) = find_decl(&sheet.rules[0].declarations, "color") {
+            assert_eq!(c.a, 0);
+        } else {
+            panic!("expected color value");
+        }
+    }
+
+    #[test]
+    fn test_rgb_inline_style() {
+        use feather::engine::css::CssParser;
+        let decls = CssParser::parse_inline_declarations("color: rgb(100, 150, 200);");
+        let val = decls.iter().find(|(k, _)| k == "color").map(|(_, v)| v);
+        assert_eq!(val, Some(&Value::Color(CssColor { r: 100, g: 150, b: 200, a: 255 })));
+    }
 }
