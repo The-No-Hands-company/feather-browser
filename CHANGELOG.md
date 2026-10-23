@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.4] — 2026-10-23
+
+### Added
+- `visibility: hidden` support: elements with `visibility: hidden` are skipped during painting (background, borders, text all suppressed) but still occupy space in layout — matching CSS spec semantics
+- `visibility` added to the inherited properties list; descendants inherit `hidden` unless they override with `visibility: visible`
+- A `visibility: visible` child of a `visibility: hidden` parent correctly renders (the guard skips painting but still recurses into children)
+
+### Tests
+- `engine_render_test.rs` `visibility_tests`: `test_visibility_hidden_produces_no_pixels`, `test_visibility_hidden_still_occupies_space`, `test_visibility_visible_child_overrides_hidden_parent`
+
 ## [0.4.3] — 2026-10-23
 
 ### Added

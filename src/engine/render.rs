@@ -117,6 +117,12 @@ fn render_box(
     if depth >= 512 {
         return;
     }
+    if is_visibility_hidden(lb) {
+        for child in &lb.children {
+            render_box(canvas, child, font, scroll_y, depth + 1, opacity);
+        }
+        return;
+    }
     let eff_opacity = (opacity * get_box_opacity(lb)).clamp(0.0, 1.0);
     render_background_scrolled(canvas, lb, scroll_y, eff_opacity);
     render_borders_scrolled(canvas, lb, scroll_y, eff_opacity);
@@ -206,6 +212,12 @@ fn render_box(
 #[cfg(not(feature = "feather-renderer"))]
 fn render_box_plain(canvas: &mut Canvas, lb: &LayoutBox, depth: usize) {
     if depth >= 512 {
+        return;
+    }
+    if is_visibility_hidden(lb) {
+        for child in &lb.children {
+            render_box_plain(canvas, child, depth + 1);
+        }
         return;
     }
     render_background(canvas, lb);
@@ -507,6 +519,14 @@ fn has_overflow_hidden(lb: &LayoutBox) -> bool {
     match &lb.box_type {
         BoxType::Block(s) | BoxType::Inline(s) =>
             matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden"),
+        BoxType::Anonymous => false,
+    }
+}
+
+fn is_visibility_hidden(lb: &LayoutBox) -> bool {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) =>
+            matches!(s.properties.get("visibility"), Some(Value::Keyword(k)) if k == "hidden"),
         BoxType::Anonymous => false,
     }
 }
