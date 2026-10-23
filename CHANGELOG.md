@@ -8,6 +8,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.7] — 2026-10-23
+
+### Added
+- `text-overflow: ellipsis` — single-line truncation with `…` for `white-space: nowrap` + `overflow: hidden` blocks
+  - Only fires when both `overflow: hidden` and `white-space: nowrap` are set on the same element
+  - Truncates character-by-character: keeps the longest prefix that still fits with the ellipsis appended
+  - Applies in block IFC, `display: inline-block` IFC, and `layout_inline_block_row`
+  - `text_overflow_ellipsis: bool` field added to `InlineFormattingContext`
+- Known inline HTML elements (`span`, `a`, `em`, `strong`, `b`, `i`, `code`, etc.) now default to `BoxType::Inline`
+  when no explicit `display` property is set, matching the HTML UA stylesheet
+
+### Tests
+- `engine_layout_test.rs`: `text_overflow_tests` module — 5 new tests:
+  - `test_text_overflow_ellipsis_truncates_overflowing_text`
+  - `test_text_overflow_ellipsis_no_truncation_when_fits`
+  - `test_text_overflow_ellipsis_via_style_tree`
+  - `test_text_overflow_without_overflow_hidden_does_not_truncate`
+  - `test_text_overflow_without_nowrap_does_not_truncate`
+
 ## [0.5.6] — 2026-10-23
 
 ### Added
