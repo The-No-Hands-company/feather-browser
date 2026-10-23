@@ -54,6 +54,8 @@ impl Dimensions {
 pub enum BoxType {
     Block(StyledNode),
     Inline(StyledNode),
+    /// Block-level internal layout, inline participation in parent flow.
+    InlineBlock(StyledNode),
     Anonymous,
 }
 
@@ -293,7 +295,7 @@ impl LayoutBox {
     #[allow(dead_code)]
     fn styled_node(&self) -> Option<&StyledNode> {
         match &self.box_type {
-            BoxType::Block(s) | BoxType::Inline(s) => Some(s),
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => Some(s),
             BoxType::Anonymous => None,
         }
     }
@@ -338,6 +340,7 @@ fn build_layout_tree_depth(styled: &StyledNode, depth: usize) -> LayoutBox {
             return LayoutBox::new(BoxType::Anonymous);
         }
         Some("inline") => BoxType::Inline(styled.clone()),
+        Some("inline-block") => BoxType::InlineBlock(styled.clone()),
         _ => BoxType::Block(styled.clone()),
     };
 
@@ -380,6 +383,7 @@ fn layout_box(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f32,
     match lb.box_type.clone() {
         BoxType::Block(_) => layout_block(lb, containing, viewport_height, depth),
         BoxType::Inline(_) => layout_inline(lb, containing),
+        BoxType::InlineBlock(_) => layout_inline_block(lb, containing, viewport_height, depth),
         BoxType::Anonymous => {
             lb.dimensions.content.x = containing.content.x;
             lb.dimensions.content.y = containing.content.y;
@@ -391,7 +395,7 @@ fn all_inline_children(children: &[LayoutBox]) -> bool {
     !children.is_empty()
         && children
             .iter()
-            .all(|c| matches!(c.box_type, BoxType::Anonymous | BoxType::Inline(_)))
+            .all(|c| matches!(c.box_type, BoxType::Anonymous | BoxType::Inline(_) | BoxType::InlineBlock(_)))
 }
 
 fn collect_inline_text(
@@ -441,6 +445,38 @@ fn collect_inline_text(
                 let font_size = match s.properties.get("font-size") {
                     Some(Value::Length(n, Unit::Px)) => *n,
                     _ => 16.0,
+                };
+                let bold = matches!(
+                    s.properties.get("font-weight"),
+                    Some(Value::Keyword(k)) if k == "bold"
+                );
+                let italic = matches!(
+                    s.properties.get("font-style"),
+                    Some(Value::Keyword(k)) if k == "italic" || k == "oblique"
+                );
+                let decoration = match s.properties.get("text-decoration") {
+                    Some(Value::Keyword(k)) if k == "underline" => TextDecoration::Underline,
+                    Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
+                    _ => parent_decoration,
+                };
+                collect_text_from_layout_children(
+                    &child.children,
+                    color,
+                    font_size,
+                    bold,
+                    italic,
+                    decoration,
+                    &mut items,
+                );
+            }
+            BoxType::InlineBlock(s) => {
+                let color = match s.properties.get("color") {
+                    Some(Value::Color(c)) => *c,
+                    _ => parent_color,
+                };
+                let font_size = match s.properties.get("font-size") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => parent_font_size,
                 };
                 let bold = matches!(
                     s.properties.get("font-weight"),
@@ -524,37 +560,51 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
             }
         }
     }
+    if all_inline_children(&lb.children)
+        && lb
+            .children
+            .iter()
+            .any(|c| matches!(c.box_type, BoxType::InlineBlock(_)))
+    {
+        layout_inline_block_row(lb, viewport_height, depth);
+        calculate_block_height(lb, viewport_height, containing.content.width);
+        return;
+    }
     if all_inline_children(&lb.children) {
         let font_size = match &lb.box_type {
-            BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("font-size") {
-                Some(Value::Length(n, Unit::Px)) => *n,
-                _ => 16.0,
-            },
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                match s.properties.get("font-size") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => 16.0,
+                }
+            }
             BoxType::Anonymous => 16.0,
         };
         let color = match &lb.box_type {
-            BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("color") {
-                Some(Value::Color(c)) => *c,
-                _ => CssColor::BLACK,
-            },
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                match s.properties.get("color") {
+                    Some(Value::Color(c)) => *c,
+                    _ => CssColor::BLACK,
+                }
+            }
             BoxType::Anonymous => CssColor::BLACK,
         };
         let bold = match &lb.box_type {
-            BoxType::Block(s) | BoxType::Inline(s) => matches!(
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => matches!(
                 s.properties.get("font-weight"),
                 Some(Value::Keyword(k)) if k == "bold"
             ),
             BoxType::Anonymous => false,
         };
         let italic = match &lb.box_type {
-            BoxType::Block(s) | BoxType::Inline(s) => matches!(
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => matches!(
                 s.properties.get("font-style"),
                 Some(Value::Keyword(k)) if k == "italic" || k == "oblique"
             ),
             BoxType::Anonymous => false,
         };
         let decoration = match &lb.box_type {
-            BoxType::Block(s) | BoxType::Inline(s) => {
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
                 match s.properties.get("text-decoration") {
                     Some(Value::Keyword(k)) if k == "underline" => TextDecoration::Underline,
                     Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
@@ -595,18 +645,20 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
         }
         if !items.is_empty() {
             let align = match &lb.box_type {
-                BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("text-align") {
-                    Some(Value::Keyword(k)) => match k.as_str() {
-                        "center" => TextAlign::Center,
-                        "right" => TextAlign::Right,
+                BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                    match s.properties.get("text-align") {
+                        Some(Value::Keyword(k)) => match k.as_str() {
+                            "center" => TextAlign::Center,
+                            "right" => TextAlign::Right,
+                            _ => TextAlign::Left,
+                        },
                         _ => TextAlign::Left,
-                    },
-                    _ => TextAlign::Left,
-                },
+                    }
+                }
                 BoxType::Anonymous => TextAlign::Left,
             };
             let line_height_override = match &lb.box_type {
-                BoxType::Block(s) | BoxType::Inline(s) => {
+                BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
                     match s.properties.get("line-height") {
                         Some(Value::Length(n, Unit::Px)) => Some(*n),
                         Some(Value::Number(n)) => Some(*n * font_size),
@@ -616,11 +668,13 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 BoxType::Anonymous => None,
             };
             let (nowrap, pre) = match &lb.box_type {
-                BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("white-space") {
-                    Some(Value::Keyword(k)) if k == "nowrap" => (true, false),
-                    Some(Value::Keyword(k)) if k == "pre"    => (false, true),
-                    _ => (false, false),
-                },
+                BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                    match s.properties.get("white-space") {
+                        Some(Value::Keyword(k)) if k == "nowrap" => (true, false),
+                        Some(Value::Keyword(k)) if k == "pre" => (false, true),
+                        _ => (false, false),
+                    }
+                }
                 BoxType::Anonymous => (false, false),
             };
             let ifc = InlineFormattingContext {
@@ -737,7 +791,7 @@ fn calculate_block_position(lb: &mut LayoutBox, containing: &Dimensions) {
 
 fn apply_relative_offset(lb: &mut LayoutBox) {
     let styled = match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) => s.clone(),
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => s.clone(),
         BoxType::Anonymous => return,
     };
     let is_relative = matches!(
@@ -767,7 +821,9 @@ fn apply_relative_offset(lb: &mut LayoutBox) {
 
 fn is_tag(lb: &LayoutBox, tag: &str) -> bool {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) => s.node.tag_name() == Some(tag),
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+            s.node.tag_name() == Some(tag)
+        }
         BoxType::Anonymous => false,
     }
 }
@@ -787,7 +843,7 @@ fn layout_block_children(lb: &mut LayoutBox, viewport_height: f32, depth: usize)
 }
 
 fn calculate_block_height(lb: &mut LayoutBox, viewport_height: f32, containing_width: f32) {
-    if let BoxType::Block(s) = &lb.box_type {
+    if let BoxType::Block(s) | BoxType::InlineBlock(s) = &lb.box_type {
         match s.properties.get("height") {
             Some(Value::Length(h, Unit::Px)) => {
                 lb.dimensions.content.height = *h;
@@ -835,4 +891,271 @@ fn lookup_length_opt(styled: &StyledNode, prop: &str) -> f32 {
         Some(Value::Length(n, Unit::Px)) => *n,
         _ => 0.0,
     }
+}
+
+/// Compute the content width of an inline-block, respecting explicit width or
+/// shrink-to-fit (using available container width as maximum).
+fn calculate_inline_block_width(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f32) {
+    let styled = match &lb.box_type {
+        BoxType::InlineBlock(s) => s.clone(),
+        _ => return,
+    };
+    let cw = containing.content.width;
+    let margin_left = lookup_length_opt(&styled, "margin-left");
+    let margin_right = lookup_length_opt(&styled, "margin-right");
+    let border_left = lookup_length_opt(&styled, "border-left-width");
+    let border_right = lookup_length_opt(&styled, "border-right-width");
+    let pad_left = lookup_length_opt(&styled, "padding-left");
+    let pad_right = lookup_length_opt(&styled, "padding-right");
+
+    let explicit_width = match styled.properties.get("width") {
+        Some(Value::Length(n, Unit::Px)) => Some(*n),
+        Some(Value::Length(n, Unit::Percent)) => Some(*n / 100.0 * cw),
+        Some(Value::Length(n, Unit::Vw)) => Some(*n / 100.0 * cw),
+        Some(Value::Length(n, Unit::Vh)) => Some(*n / 100.0 * viewport_height),
+        _ => None,
+    };
+
+    let border_box = matches!(
+        styled.properties.get("box-sizing"),
+        Some(Value::Keyword(k)) if k == "border-box"
+    );
+
+    let width = if let Some(w) = explicit_width {
+        if border_box {
+            (w - border_left - border_right - pad_left - pad_right).max(0.0)
+        } else {
+            w
+        }
+    } else {
+        // Shrink-to-fit: available width minus all fixed horizontal space.
+        (cw - margin_left - margin_right - border_left - border_right - pad_left - pad_right).max(0.0)
+    };
+
+    lb.dimensions.content.width = width;
+    lb.dimensions.margin.left = margin_left;
+    lb.dimensions.margin.right = margin_right;
+    lb.dimensions.border.left = border_left;
+    lb.dimensions.border.right = border_right;
+    lb.dimensions.padding.left = pad_left;
+    lb.dimensions.padding.right = pad_right;
+}
+
+/// Lay out a single `InlineBlock` element.  Its x/y will be overridden by the
+/// parent row layout; this function sets width, vertical edges, and height.
+fn layout_inline_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f32, depth: usize) {
+    if depth >= 512 {
+        return;
+    }
+    calculate_inline_block_width(lb, containing, viewport_height);
+
+    let s = match &lb.box_type {
+        BoxType::InlineBlock(s) => s.clone(),
+        _ => return,
+    };
+    lb.dimensions.margin.top = lookup_length_opt(&s, "margin-top");
+    lb.dimensions.margin.bottom = lookup_length_opt(&s, "margin-bottom");
+    lb.dimensions.border.top = lookup_length_opt(&s, "border-top-width");
+    lb.dimensions.border.bottom = lookup_length_opt(&s, "border-bottom-width");
+    lb.dimensions.padding.top = lookup_length_opt(&s, "padding-top");
+    lb.dimensions.padding.bottom = lookup_length_opt(&s, "padding-bottom");
+
+    // Default position: bottom of containing block (overridden by row layout).
+    lb.dimensions.content.x = containing.content.x
+        + lb.dimensions.margin.left
+        + lb.dimensions.border.left
+        + lb.dimensions.padding.left;
+    lb.dimensions.content.y = containing.content.y
+        + containing.content.height
+        + lb.dimensions.margin.top
+        + lb.dimensions.border.top
+        + lb.dimensions.padding.top;
+
+    // Internal content layout.
+    if all_inline_children(&lb.children) {
+        let font_size = match s.properties.get("font-size") {
+            Some(Value::Length(n, Unit::Px)) => *n,
+            _ => 16.0,
+        };
+        let color = match s.properties.get("color") {
+            Some(Value::Color(c)) => *c,
+            _ => CssColor::BLACK,
+        };
+        let bold = matches!(s.properties.get("font-weight"), Some(Value::Keyword(k)) if k == "bold");
+        let italic = matches!(s.properties.get("font-style"), Some(Value::Keyword(k)) if k == "italic" || k == "oblique");
+        let decoration = match s.properties.get("text-decoration") {
+            Some(Value::Keyword(k)) if k == "underline" => TextDecoration::Underline,
+            Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
+            _ => TextDecoration::None,
+        };
+        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration);
+        if !items.is_empty() {
+            let align = match s.properties.get("text-align") {
+                Some(Value::Keyword(k)) => match k.as_str() {
+                    "center" => TextAlign::Center,
+                    "right" => TextAlign::Right,
+                    _ => TextAlign::Left,
+                },
+                _ => TextAlign::Left,
+            };
+            let line_height_override = match s.properties.get("line-height") {
+                Some(Value::Length(n, Unit::Px)) => Some(*n),
+                Some(Value::Number(n)) => Some(*n * font_size),
+                _ => None,
+            };
+            let (nowrap, pre) = match s.properties.get("white-space") {
+                Some(Value::Keyword(k)) if k == "nowrap" => (true, false),
+                Some(Value::Keyword(k)) if k == "pre" => (false, true),
+                _ => (false, false),
+            };
+            let ifc = InlineFormattingContext {
+                font_size,
+                available_width: lb.dimensions.content.width.max(1.0),
+                align,
+                line_height_override,
+                nowrap,
+                pre,
+            };
+            let (line_boxes, height) = ifc.layout(&items);
+            lb.line_boxes = line_boxes;
+            lb.dimensions.content.height = height;
+        }
+    } else if !lb.children.is_empty() {
+        layout_block_children(lb, viewport_height, depth);
+    }
+
+    calculate_block_height(lb, viewport_height, containing.content.width);
+}
+
+/// Position all inline-block children of `lb` in a horizontal row flow,
+/// wrapping to the next line when a child would overflow the container width.
+fn layout_inline_block_row(lb: &mut LayoutBox, viewport_height: f32, depth: usize) {
+    if depth >= 512 {
+        return;
+    }
+    let cw = lb.dimensions.content.width;
+    let ox = lb.dimensions.content.x;
+    let oy = lb.dimensions.content.y;
+    let mut cx: f32 = 0.0;
+    let mut cy: f32 = 0.0;
+    let mut row_h: f32 = 0.0;
+
+    // Build a fake containing Dimensions so calculate_inline_block_width has a width.
+    let fake_containing = Dimensions {
+        content: Rect { x: ox, y: oy, width: cw, height: 0.0 },
+        ..Default::default()
+    };
+
+    for child in &mut lb.children {
+        if !matches!(child.box_type, BoxType::InlineBlock(_)) {
+            continue;
+        }
+        calculate_inline_block_width(child, &fake_containing, viewport_height);
+
+        let s = match &child.box_type {
+            BoxType::InlineBlock(s) => s.clone(),
+            _ => unreachable!(),
+        };
+        child.dimensions.margin.top = lookup_length_opt(&s, "margin-top");
+        child.dimensions.margin.bottom = lookup_length_opt(&s, "margin-bottom");
+        child.dimensions.border.top = lookup_length_opt(&s, "border-top-width");
+        child.dimensions.border.bottom = lookup_length_opt(&s, "border-bottom-width");
+        child.dimensions.padding.top = lookup_length_opt(&s, "padding-top");
+        child.dimensions.padding.bottom = lookup_length_opt(&s, "padding-bottom");
+
+        let mb_w = child.dimensions.margin.left
+            + child.dimensions.border.left
+            + child.dimensions.padding.left
+            + child.dimensions.content.width
+            + child.dimensions.padding.right
+            + child.dimensions.border.right
+            + child.dimensions.margin.right;
+
+        // Wrap when the child doesn't fit and we're not at the start of a row.
+        if cx + mb_w > cw + 0.5 && cx > 0.5 {
+            cy += row_h;
+            cx = 0.0;
+            row_h = 0.0;
+        }
+
+        // Place the child.
+        child.dimensions.content.x = ox
+            + cx
+            + child.dimensions.margin.left
+            + child.dimensions.border.left
+            + child.dimensions.padding.left;
+        child.dimensions.content.y = oy
+            + cy
+            + child.dimensions.margin.top
+            + child.dimensions.border.top
+            + child.dimensions.padding.top;
+
+        // Layout the inline-block's own internal content.
+        if all_inline_children(&child.children) {
+            let font_size = match s.properties.get("font-size") {
+                Some(Value::Length(n, Unit::Px)) => *n,
+                _ => 16.0,
+            };
+            let color = match s.properties.get("color") {
+                Some(Value::Color(c)) => *c,
+                _ => CssColor::BLACK,
+            };
+            let bold = matches!(s.properties.get("font-weight"), Some(Value::Keyword(k)) if k == "bold");
+            let italic = matches!(s.properties.get("font-style"), Some(Value::Keyword(k)) if k == "italic" || k == "oblique");
+            let decoration = match s.properties.get("text-decoration") {
+                Some(Value::Keyword(k)) if k == "underline" => TextDecoration::Underline,
+                Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
+                _ => TextDecoration::None,
+            };
+            let items = collect_inline_text(&child.children, font_size, color, bold, italic, decoration);
+            if !items.is_empty() {
+                let align = match s.properties.get("text-align") {
+                    Some(Value::Keyword(k)) => match k.as_str() {
+                        "center" => TextAlign::Center,
+                        "right" => TextAlign::Right,
+                        _ => TextAlign::Left,
+                    },
+                    _ => TextAlign::Left,
+                };
+                let line_height_override = match s.properties.get("line-height") {
+                    Some(Value::Length(n, Unit::Px)) => Some(*n),
+                    Some(Value::Number(n)) => Some(*n * font_size),
+                    _ => None,
+                };
+                let (nowrap, pre) = match s.properties.get("white-space") {
+                    Some(Value::Keyword(k)) if k == "nowrap" => (true, false),
+                    Some(Value::Keyword(k)) if k == "pre" => (false, true),
+                    _ => (false, false),
+                };
+                let ifc = InlineFormattingContext {
+                    font_size,
+                    available_width: child.dimensions.content.width.max(1.0),
+                    align,
+                    line_height_override,
+                    nowrap,
+                    pre,
+                };
+                let (line_boxes, height) = ifc.layout(&items);
+                child.line_boxes = line_boxes;
+                child.dimensions.content.height = height;
+            }
+        } else if !child.children.is_empty() {
+            layout_block_children(child, viewport_height, depth + 1);
+        }
+
+        calculate_block_height(child, viewport_height, cw);
+
+        let mb_h = child.dimensions.margin.top
+            + child.dimensions.border.top
+            + child.dimensions.padding.top
+            + child.dimensions.content.height
+            + child.dimensions.padding.bottom
+            + child.dimensions.border.bottom
+            + child.dimensions.margin.bottom;
+
+        cx += mb_w;
+        row_h = row_h.max(mb_h);
+    }
+
+    lb.dimensions.content.height = cy + row_h;
 }

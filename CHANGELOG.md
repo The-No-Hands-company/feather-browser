@@ -8,6 +8,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.2] — 2026-10-23
+
+### Added
+- `display: inline-block` — new `BoxType::InlineBlock(StyledNode)` variant in the layout tree
+- `calculate_inline_block_width`: respects explicit `width` (px, %, vw, vh) and `box-sizing: border-box`; falls back to shrink-to-fit (available container width) when width is `auto`
+- `layout_inline_block`: block-level internal layout (IFC for inline children, block flow for block children) with full height constraints (`height`, `min-height`, `max-height`)
+- `layout_inline_block_row`: horizontal row flow for a parent whose children are all inline / inline-block; line-wraps when a child would overflow the container width; stacks rows vertically; sets the parent's content height
+- `build_layout_tree_depth`: maps `display: inline-block` → `BoxType::InlineBlock`
+- `all_inline_children`: inline-block children now count as inline, triggering the row-flow path in parent blocks
+- Render helpers (`get_box_opacity`, `get_border_radius`, `is_border_none`, `is_img_element`, `render_img_placeholder`, `has_overflow_hidden`, `is_visibility_hidden`, `get_color`) all handle the new `InlineBlock` variant
+
+### Tests
+- `engine_layout_test.rs`: `inline_block_tests` module — 4 new tests:
+  - `test_inline_block_explicit_width_and_height`
+  - `test_two_inline_blocks_side_by_side`
+  - `test_inline_block_wraps_to_next_row`
+  - `test_inline_block_parent_height_equals_row`
+
 ## [0.5.1] — 2026-10-23
 
 ### Added

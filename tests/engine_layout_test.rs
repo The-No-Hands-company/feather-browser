@@ -1202,3 +1202,116 @@ mod box_sizing_tests {
             "max-height:80px must clamp height:200px down to 80");
     }
 }
+
+#[cfg(test)]
+mod inline_block_tests {
+    use feather::engine::css::CssParser;
+    use feather::engine::html::HtmlParser;
+    use feather::engine::layout::{BoxType, LayoutEngine};
+    use feather::engine::style::style_tree;
+
+    fn find_inline_block(
+        lb: &feather::engine::layout::LayoutBox,
+    ) -> Vec<&feather::engine::layout::LayoutBox> {
+        let mut out = Vec::new();
+        if matches!(lb.box_type, BoxType::InlineBlock(_)) {
+            out.push(lb);
+        }
+        for c in &lb.children {
+            out.extend(find_inline_block(c));
+        }
+        out
+    }
+
+    #[test]
+    fn test_inline_block_explicit_width_and_height() {
+        let dom = HtmlParser::parse(
+            "<div><span style='display:inline-block;width:120px;height:40px'>A</span></div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let ibs = find_inline_block(&layout);
+        assert!(!ibs.is_empty(), "expected at least one inline-block box");
+        let ib = ibs[0];
+        assert_eq!(ib.dimensions.content.width, 120.0, "inline-block width should be 120px");
+        assert_eq!(ib.dimensions.content.height, 40.0, "inline-block height should be 40px");
+    }
+
+    #[test]
+    fn test_two_inline_blocks_side_by_side() {
+        let dom = HtmlParser::parse(
+            "<div>\
+               <span style='display:inline-block;width:100px;height:50px'>A</span>\
+               <span style='display:inline-block;width:100px;height:50px'>B</span>\
+             </div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let ibs = find_inline_block(&layout);
+        assert_eq!(ibs.len(), 2, "expected exactly 2 inline-block boxes");
+        let x0 = ibs[0].dimensions.content.x;
+        let x1 = ibs[1].dimensions.content.x;
+        assert!(
+            x1 > x0,
+            "second inline-block (x={x1}) should be to the right of first (x={x0})"
+        );
+        // Both should be on the same row (same y).
+        assert_eq!(
+            ibs[0].dimensions.content.y,
+            ibs[1].dimensions.content.y,
+            "both inline-blocks should share the same y (same row)"
+        );
+    }
+
+    #[test]
+    fn test_inline_block_wraps_to_next_row() {
+        // Container is 150px wide; each inline-block is 100px wide → second wraps.
+        let dom = HtmlParser::parse(
+            "<div style='width:150px'>\
+               <span style='display:inline-block;width:100px;height:20px'>A</span>\
+               <span style='display:inline-block;width:100px;height:20px'>B</span>\
+             </div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let ibs = find_inline_block(&layout);
+        assert_eq!(ibs.len(), 2, "expected exactly 2 inline-block boxes");
+        assert!(
+            ibs[1].dimensions.content.y > ibs[0].dimensions.content.y,
+            "second inline-block should wrap to a lower y than the first"
+        );
+    }
+
+    #[test]
+    fn test_inline_block_parent_height_equals_row() {
+        // Parent has two 50px-tall inline-blocks side by side → parent height = 50px.
+        let dom = HtmlParser::parse(
+            "<div id='parent'>\
+               <span style='display:inline-block;width:80px;height:50px'>A</span>\
+               <span style='display:inline-block;width:80px;height:50px'>B</span>\
+             </div>",
+        );
+        let sheet = CssParser::parse("#parent { display: block; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        fn find_block_with_ib_children(
+            lb: &feather::engine::layout::LayoutBox,
+        ) -> Option<&feather::engine::layout::LayoutBox> {
+            if matches!(lb.box_type, BoxType::Block(_))
+                && lb.children.iter().any(|c| matches!(c.box_type, BoxType::InlineBlock(_)))
+            {
+                return Some(lb);
+            }
+            lb.children.iter().find_map(find_block_with_ib_children)
+        }
+        let parent = find_block_with_ib_children(&layout)
+            .expect("expected a block parent containing inline-block children");
+        assert_eq!(
+            parent.dimensions.content.height, 50.0,
+            "parent height should equal the single row height of 50px"
+        );
+    }
+}
