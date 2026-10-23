@@ -109,6 +109,7 @@ mod layout_tests {
             align: TextAlign::Left,
             line_height_override: None,
             nowrap: false,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -137,6 +138,7 @@ mod layout_tests {
             align: TextAlign::Center,
             line_height_override: None,
             nowrap: false,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -172,6 +174,7 @@ mod layout_tests {
             align: TextAlign::Right,
             line_height_override: None,
             nowrap: false,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -224,6 +227,7 @@ mod layout_tests {
             align: TextAlign::Left,
             line_height_override: None,
             nowrap: false,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines.len(), 1);
@@ -247,6 +251,7 @@ mod layout_tests {
             align: TextAlign::Left,
             line_height_override: None,
             nowrap: false,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines.len(), 1);
@@ -991,6 +996,7 @@ mod white_space_tests {
             align: TextAlign::Left,
             line_height_override: None,
             nowrap: true,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
         assert_eq!(lines.len(), 1, "nowrap must keep all text on one line regardless of width; got {} lines", lines.len());
@@ -1005,6 +1011,7 @@ mod white_space_tests {
             align: TextAlign::Left,
             line_height_override: None,
             nowrap: false,
+            pre: false,
         };
         let (lines, _) = ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
         assert!(lines.len() > 1, "normal wrap must wrap text; got {} line(s)", lines.len());
@@ -1024,5 +1031,88 @@ mod white_space_tests {
         }
         let max_lines = count_lines(&layout);
         assert_eq!(max_lines, 1, "white-space:nowrap must produce 1 line box; got {max_lines}");
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+mod white_space_pre_tests {
+    use feather::engine::{
+        css::{CssColor, CssParser},
+        html::HtmlParser,
+        layout::{InlineFormattingContext, InlineText, LayoutEngine, TextAlign, TextDecoration},
+        style::style_tree,
+    };
+
+    fn text_item(s: &str) -> InlineText {
+        InlineText {
+            text: s.to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+        }
+    }
+
+    #[test]
+    fn test_pre_ifc_newline_produces_two_lines() {
+        // An InlineText whose text contains "\n" must produce 2 line boxes when pre:true.
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 800.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: true,
+        };
+        let (lines, _) = ifc.layout(&[text_item("line one\nline two")]);
+        assert_eq!(lines.len(), 2, "pre IFC must split on \\n; got {} lines", lines.len());
+        assert_eq!(lines[0].items[0].text, "line one");
+        assert_eq!(lines[1].items[0].text, "line two");
+    }
+
+    #[test]
+    fn test_pre_ifc_no_wrap_on_narrow_width() {
+        // pre:true on a narrow IFC must not wrap — the single logical line stays as one line box.
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 60.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: true,
+        };
+        let (lines, _) = ifc.layout(&[text_item("The quick brown fox")]);
+        assert_eq!(lines.len(), 1, "pre must not auto-wrap; got {} lines", lines.len());
+    }
+
+    #[test]
+    fn test_pre_ifc_multiple_newlines_produce_correct_line_count() {
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 800.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: true,
+        };
+        let (lines, _) = ifc.layout(&[text_item("a\nb\nc")]);
+        assert_eq!(lines.len(), 3, "3 segments from 2 newlines must yield 3 lines; got {}", lines.len());
+    }
+
+    #[test]
+    fn test_white_space_pre_via_css_pipeline() {
+        // CSS white-space:pre on a narrow container must not wrap.
+        let dom = HtmlParser::parse("<p>The quick brown fox jumps over the lazy dog</p>");
+        let sheet = CssParser::parse("p { display: block; white-space: pre; font-size: 16px; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 80.0);
+        fn count_lines(lb: &feather::engine::layout::LayoutBox) -> usize {
+            let here = lb.line_boxes.len();
+            lb.children.iter().map(count_lines).fold(here, |a, b| a.max(b))
+        }
+        let max_lines = count_lines(&layout);
+        assert_eq!(max_lines, 1, "white-space:pre must not auto-wrap; got {max_lines} lines");
     }
 }

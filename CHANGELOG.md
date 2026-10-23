@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.6] — 2026-10-23
+
+### Added
+- `white-space: pre` support: text with `\n` characters is split into separate line boxes; no automatic wrapping occurs (combines the newline-preservation of `pre` with nowrap semantics)
+- `pre: bool` field added to `InlineFormattingContext`; when true, the layout loop splits each `InlineText` by `\n` instead of `split_whitespace`, flushes a line after each newline, and never wraps
+- IFC construction in `layout_block` now decodes `"pre"` alongside `"nowrap"` from `white-space`
+
+### Tests
+- `engine_layout_test.rs` `white_space_pre_tests`: `test_pre_ifc_newline_produces_two_lines`, `test_pre_ifc_no_wrap_on_narrow_width`, `test_pre_ifc_multiple_newlines_produce_correct_line_count`, `test_white_space_pre_via_css_pipeline`
+
 ## [0.4.5] — 2026-10-23
 
 ### Added
