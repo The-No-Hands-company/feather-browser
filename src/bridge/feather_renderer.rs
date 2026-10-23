@@ -169,7 +169,10 @@ impl FeatherRenderer {
             h5{font-size:13px;margin-top:22px;margin-bottom:22px}\
             h6{font-size:11px;margin-top:24px;margin-bottom:24px}\
             p{display:block;margin-top:16px;margin-bottom:16px}\
-            body{display:block;margin:8px}";
+            body{display:block;margin:8px}\
+            ul{display:block;padding-left:40px;list-style-type:disc}\
+            ol{display:block;padding-left:40px;list-style-type:decimal}\
+            li{display:block}";
         let css_text = format!("{} {} {}", ua_css, extra_css, extract_style_tags(&dom.root, 0));
         let sheet = CssParser::parse(&css_text);
         let styled = style_tree(&dom.root, &sheet);

@@ -741,3 +741,113 @@ mod position_relative_tests {
         );
     }
 }
+
+#[cfg(test)]
+mod list_marker_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{BoxType, LayoutBox, LayoutEngine},
+        style::style_tree,
+    };
+
+    fn find_box<'a>(lb: &'a LayoutBox, tag: &str) -> Option<&'a LayoutBox> {
+        if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+            if let feather::engine::dom::NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == tag {
+                    return Some(lb);
+                }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = find_box(child, tag) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn test_ul_li_disc_marker_in_line_box() {
+        let dom = HtmlParser::parse("<ul><li>Item one</li></ul>");
+        let sheet = CssParser::parse(
+            "ul{display:block;padding-left:40px;list-style-type:disc}li{display:block}",
+        );
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let li_box = find_box(&layout, "li").expect("li box not found");
+        // The first line box item must start with the disc bullet character.
+        assert!(
+            !li_box.line_boxes.is_empty(),
+            "li must have at least one line box"
+        );
+        let first_text = &li_box.line_boxes[0].items[0].text;
+        assert!(
+            first_text.starts_with('•'),
+            "first item text must start with disc bullet '•', got {:?}",
+            first_text
+        );
+    }
+
+    #[test]
+    fn test_ol_li_decimal_marker_in_line_box() {
+        let dom = HtmlParser::parse("<ol><li>First</li><li>Second</li></ol>");
+        let sheet = CssParser::parse(
+            "ol{display:block;padding-left:40px;list-style-type:decimal}li{display:block}",
+        );
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        // Collect all li boxes in document order.
+        fn collect_li<'a>(lb: &'a LayoutBox, out: &mut Vec<&'a LayoutBox>) {
+            if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+                if let feather::engine::dom::NodeType::Element(e) = &s.node.node_type {
+                    if e.tag_name == "li" {
+                        out.push(lb);
+                    }
+                }
+            }
+            for child in &lb.children {
+                collect_li(child, out);
+            }
+        }
+        let mut lis = Vec::new();
+        collect_li(&layout, &mut lis);
+        assert_eq!(lis.len(), 2, "must find two li boxes");
+        // First li: marker "1. "
+        assert!(
+            !lis[0].line_boxes.is_empty(),
+            "first li must have line boxes"
+        );
+        let first_marker = &lis[0].line_boxes[0].items[0].text;
+        assert!(
+            first_marker.starts_with("1."),
+            "first li marker must start with '1.', got {:?}",
+            first_marker
+        );
+        // Second li: marker "2. "
+        let second_marker = &lis[1].line_boxes[0].items[0].text;
+        assert!(
+            second_marker.starts_with("2."),
+            "second li marker must start with '2.', got {:?}",
+            second_marker
+        );
+    }
+
+    #[test]
+    fn test_ul_li_no_marker_without_list_style() {
+        let dom = HtmlParser::parse("<ul><li>Item</li></ul>");
+        // No list-style-type set, so no marker should be injected.
+        let sheet = CssParser::parse("ul{display:block}li{display:block}");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let li_box = find_box(&layout, "li").expect("li box not found");
+        if !li_box.line_boxes.is_empty() {
+            let first_text = &li_box.line_boxes[0].items[0].text;
+            assert!(
+                !first_text.starts_with('•'),
+                "without list-style-type:disc no bullet must appear, got {:?}",
+                first_text
+            );
+        }
+    }
+}
