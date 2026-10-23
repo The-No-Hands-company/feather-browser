@@ -101,6 +101,7 @@ mod layout_tests {
             font_bold: false,
             font_italic: false,
             text_decoration: TextDecoration::None,
+            force_break: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -127,6 +128,7 @@ mod layout_tests {
             font_bold: false,
             font_italic: false,
             text_decoration: TextDecoration::None,
+            force_break: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -160,6 +162,7 @@ mod layout_tests {
             font_bold: false,
             font_italic: false,
             text_decoration: TextDecoration::None,
+            force_break: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -210,6 +213,7 @@ mod layout_tests {
             font_bold: false,
             font_italic: false,
             text_decoration: TextDecoration::Underline,
+            force_break: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -231,6 +235,7 @@ mod layout_tests {
             font_bold: false,
             font_italic: false,
             text_decoration: TextDecoration::LineThrough,
+            force_break: false,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -849,5 +854,104 @@ mod list_marker_tests {
                 first_text
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod br_hr_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{BoxType, LayoutBox, LayoutEngine},
+        style::style_tree,
+    };
+
+    fn find_line_boxes_in<'a>(lb: &'a LayoutBox) -> Option<&'a Vec<feather::engine::layout::LineBox>> {
+        if !lb.line_boxes.is_empty() {
+            return Some(&lb.line_boxes);
+        }
+        for child in &lb.children {
+            if let Some(found) = find_line_boxes_in(child) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    fn find_box_by_tag<'a>(lb: &'a LayoutBox, tag: &str) -> Option<&'a LayoutBox> {
+        if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+            if let feather::engine::dom::NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == tag {
+                    return Some(lb);
+                }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = find_box_by_tag(child, tag) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn test_br_forces_second_line_box() {
+        // Two text runs separated by <br> must produce two line boxes.
+        let dom = HtmlParser::parse("<p>First line<br>Second line</p>");
+        let sheet = CssParser::parse("p{display:block}br{display:inline}");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let lines = find_line_boxes_in(&layout).expect("no line boxes in layout");
+        assert!(
+            lines.len() >= 2,
+            "<br> must produce at least 2 line boxes, got {}",
+            lines.len()
+        );
+    }
+
+    #[test]
+    fn test_br_only_produces_empty_line() {
+        // <br> at the start: second paragraph should start on a new line.
+        let dom = HtmlParser::parse("<p>line1<br>line2</p>");
+        let sheet = CssParser::parse("p{display:block}br{display:inline}");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let lines = find_line_boxes_in(&layout).expect("no line boxes");
+        // line 0 has "line1", line 1 has "line2"
+        assert!(
+            lines.len() >= 2,
+            "expected ≥2 line boxes after <br>, got {}",
+            lines.len()
+        );
+        assert!(
+            lines[0].y < lines[1].y,
+            "second line box must be lower than the first (y={} vs y={})",
+            lines[0].y,
+            lines[1].y
+        );
+    }
+
+    #[test]
+    fn test_hr_ua_rules_apply() {
+        let dom = HtmlParser::parse("<hr>");
+        let ua = "hr{display:block;border-top-width:2px;border-color:#888888;margin-top:8px;margin-bottom:8px}";
+        let sheet = CssParser::parse(ua);
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let hr_box = find_box_by_tag(&layout, "hr").expect("hr box not found");
+        // border-top-width must be stored in dimensions.border.top
+        assert_eq!(
+            hr_box.dimensions.border.top,
+            2.0,
+            "hr border-top must be 2px, got {}",
+            hr_box.dimensions.border.top
+        );
+        // margin-top must be 8px
+        assert_eq!(
+            hr_box.dimensions.margin.top,
+            8.0,
+            "hr margin-top must be 8px, got {}",
+            hr_box.dimensions.margin.top
+        );
     }
 }

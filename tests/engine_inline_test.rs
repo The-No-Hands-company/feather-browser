@@ -12,6 +12,7 @@ mod inline_tests {
             font_bold: false,
             font_italic: false,
             text_decoration: TextDecoration::None,
+            force_break: false,
         }
     }
 
