@@ -159,7 +159,8 @@ impl FeatherRenderer {
 
         let dom = HtmlParser::parse(html);
         // UA stylesheet hides chrome; extra_css carries linked stylesheets fetched off-thread.
-        let ua_css = "head{display:none}style{display:none}script{display:none}title{display:none}";
+        let ua_css = "head{display:none}style{display:none}script{display:none}title{display:none}\
+            a{color:#0000EE;text-decoration:underline}";
         let css_text = format!("{} {} {}", ua_css, extra_css, extract_style_tags(&dom.root, 0));
         let sheet = CssParser::parse(&css_text);
         let styled = style_tree(&dom.root, &sheet);

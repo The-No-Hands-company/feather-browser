@@ -351,4 +351,45 @@ mod selector_tests {
             "grandchild span must NOT have background-color: orange from div > p"
         );
     }
+
+    #[test]
+    fn test_anchor_ua_color_applied() {
+        let dom = HtmlParser::parse("<p><a href=\"#\">link</a></p>");
+        // UA rule mirrors what feather_renderer injects
+        let sheet = CssParser::parse("a{color:#0000EE;text-decoration:underline}");
+        let styled = style_tree(&dom.root, &sheet);
+        let a_node = find_by_tag(&styled, "a").expect("a node not found");
+        assert_eq!(
+            a_node.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 0, g: 0, b: 238, a: 255 })),
+            "<a> must have UA blue color #0000EE"
+        );
+    }
+
+    #[test]
+    fn test_anchor_ua_text_decoration_applied() {
+        let dom = HtmlParser::parse("<p><a href=\"#\">link</a></p>");
+        let sheet = CssParser::parse("a{color:#0000EE;text-decoration:underline}");
+        let styled = style_tree(&dom.root, &sheet);
+        let a_node = find_by_tag(&styled, "a").expect("a node not found");
+        assert_eq!(
+            a_node.properties.get("text-decoration"),
+            Some(&Value::Keyword("underline".to_string())),
+            "<a> must have UA text-decoration: underline"
+        );
+    }
+
+    #[test]
+    fn test_anchor_color_overridable_by_author() {
+        let dom = HtmlParser::parse("<a href=\"#\">link</a>");
+        // Author rule after UA rule — author wins (cascade order in the sheet string)
+        let sheet = CssParser::parse("a{color:#0000EE;text-decoration:underline} a{color:red}");
+        let styled = style_tree(&dom.root, &sheet);
+        let a_node = find_by_tag(&styled, "a").expect("a node not found");
+        assert_eq!(
+            a_node.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 255, g: 0, b: 0, a: 255 })),
+            "author color:red must override UA blue"
+        );
+    }
 }
