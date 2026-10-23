@@ -660,3 +660,84 @@ mod display_none_tests {
             "p inside display:none div must not appear in layout tree");
     }
 }
+
+#[cfg(test)]
+mod position_relative_tests {
+    use feather::engine::{
+        css::CssParser,
+        html::HtmlParser,
+        layout::{BoxType, LayoutBox, LayoutEngine},
+        style::style_tree,
+    };
+
+    fn find_box<'a>(lb: &'a LayoutBox, tag: &str) -> Option<&'a LayoutBox> {
+        if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+            if let feather::engine::dom::NodeType::Element(e) = &s.node.node_type {
+                if e.tag_name == tag {
+                    return Some(lb);
+                }
+            }
+        }
+        for child in &lb.children {
+            if let Some(found) = find_box(child, tag) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn test_position_relative_top_left_offsets_content() {
+        let dom = HtmlParser::parse(
+            "<div><p style=\"position: relative; top: 10px; left: 20px;\">hi</p></div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+
+        let p_box = find_box(&layout, "p").expect("p box not found");
+        assert!(
+            p_box.dimensions.content.x >= 20.0,
+            "left: 20px must shift x by ≥20, got {:.2}",
+            p_box.dimensions.content.x
+        );
+        assert!(
+            p_box.dimensions.content.y >= 10.0,
+            "top: 10px must shift y by ≥10, got {:.2}",
+            p_box.dimensions.content.y
+        );
+    }
+
+    #[test]
+    fn test_position_static_no_offset() {
+        let dom = HtmlParser::parse("<div><p>hi</p></div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+
+        let p_box = find_box(&layout, "p").expect("p box not found");
+        assert_eq!(
+            p_box.dimensions.content.x, 0.0,
+            "static p must have x=0, got {:.2}",
+            p_box.dimensions.content.x
+        );
+    }
+
+    #[test]
+    fn test_position_relative_negative_top_shifts_up() {
+        let dom = HtmlParser::parse(
+            "<div><p style=\"position: relative; top: -5px;\">hi</p></div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+
+        let p_box = find_box(&layout, "p").expect("p box not found");
+        // Normal flow y would be 0 (first child); top: -5px shifts it up to -5
+        assert!(
+            p_box.dimensions.content.y < 0.0,
+            "top: -5px must yield y < 0, got {:.2}",
+            p_box.dimensions.content.y
+        );
+    }
+}

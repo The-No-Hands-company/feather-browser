@@ -573,7 +573,7 @@ mod border_shorthand_tests {
 
 #[cfg(test)]
 mod named_color_tests {
-    use feather::engine::css::{CssColor, CssParser, Value};
+    use feather::engine::css::{CssColor, CssParser, Unit, Value};
 
     fn parse_color(s: &str) -> Option<CssColor> {
         match CssParser::parse_value(s) {
@@ -753,6 +753,28 @@ mod named_color_tests {
         assert_eq!(
             find_decl(&sheet.rules[0].declarations, "text-decoration"),
             Some(&Value::Keyword("none".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_position_relative_parsed() {
+        let sheet = CssParser::parse("div { position: relative; }");
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "position"),
+            Some(&Value::Keyword("relative".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_position_offset_top_left_parsed() {
+        let sheet = CssParser::parse("div { position: relative; top: 10px; left: 20px; }");
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "top"),
+            Some(&Value::Length(10.0, Unit::Px))
+        );
+        assert_eq!(
+            find_decl(&sheet.rules[0].declarations, "left"),
+            Some(&Value::Length(20.0, Unit::Px))
         );
     }
 }
