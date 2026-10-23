@@ -8,6 +8,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.6] — 2026-10-23
+
+### Added
+- `word-spacing: Npx` — extra horizontal gap between words in inline text
+  - Added to the inter-word space: each gap between words uses `space_advance + word_spacing` instead of `space_advance` alone
+  - Inherited — child inline elements and anonymous text nodes pick up the parent's value
+  - Applies in all three IFC call sites (block layout, `display: inline-block`, and `layout_inline_block_row`)
+  - `word_spacing: f32` field added to `InlineText` and `PlacedInlineItem`
+
+### Tests
+- `engine_layout_test.rs`: `word_spacing_tests` module — 5 new tests:
+  - `test_word_spacing_zero_is_default`
+  - `test_word_spacing_widens_gap_between_words`
+  - `test_word_spacing_ifc_item_carries_value`
+  - `test_word_spacing_inherits_from_parent`
+  - `test_word_spacing_causes_earlier_wrap`
+
 ## [0.5.5] — 2026-10-23
 
 ### Added

@@ -103,6 +103,7 @@ mod layout_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -133,6 +134,7 @@ mod layout_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -170,6 +172,7 @@ mod layout_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -224,6 +227,7 @@ mod layout_tests {
             text_decoration: TextDecoration::Underline,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -249,6 +253,7 @@ mod layout_tests {
             text_decoration: TextDecoration::LineThrough,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -990,6 +995,7 @@ mod white_space_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }
     }
 
@@ -1059,6 +1065,7 @@ mod white_space_pre_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }
     }
 
@@ -1356,6 +1363,7 @@ mod letter_spacing_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -1384,6 +1392,7 @@ mod letter_spacing_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }];
         let items_ls = vec![InlineText {
             text: "abc".to_string(),
@@ -1394,6 +1403,7 @@ mod letter_spacing_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 2.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -1447,6 +1457,7 @@ mod letter_spacing_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 5.0,
+            word_spacing: 0.0,
         }];
         let ifc = InlineFormattingContext {
             font_size: 16.0,
@@ -1482,6 +1493,7 @@ mod letter_spacing_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 10.0,
+            word_spacing: 0.0,
         }];
         let (lines, _) = ifc_ls.layout(&items);
         // With 10px letter-spacing each 2-char word is wider; both shouldn't fit on 40px.
@@ -1490,5 +1502,161 @@ mod letter_spacing_tests {
             "with large letter-spacing wrapping must occur; got {} lines",
             lines.len()
         );
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+mod word_spacing_tests {
+    use feather::engine::css::{CssParser, CssColor};
+    use feather::engine::html::HtmlParser;
+    use feather::engine::layout::{InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign, TextDecoration};
+    use feather::engine::font::FontMetrics;
+    use feather::engine::style::style_tree;
+
+    fn find_first_line_box(lb: &LayoutBox) -> Option<&LineBox> {
+        if let Some(line) = lb.line_boxes.first() { return Some(line); }
+        for child in &lb.children {
+            if let Some(line) = find_first_line_box(child) { return Some(line); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_word_spacing_zero_is_default() {
+        let items = vec![InlineText {
+            text: "hello world".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 0.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines[0].items[0].word_spacing, 0.0);
+    }
+
+    #[test]
+    fn test_word_spacing_widens_gap_between_words() {
+        // With word_spacing=20px the second word must start further right than without.
+        let fm = FontMetrics::load(16.0);
+        let w1 = fm.measure_str("hello");
+        let space = fm.space_advance;
+
+        let items_no_ws = vec![InlineText {
+            text: "hello world".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 0.0,
+        }];
+        let items_ws = vec![InlineText {
+            text: "hello world".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 20.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let (lines_no_ws, _) = ifc.layout(&items_no_ws);
+        let (lines_ws, _) = ifc.layout(&items_ws);
+        // Second word x should differ by exactly 20px.
+        let x2_no = lines_no_ws[0].items[1].x;
+        let x2_ws = lines_ws[0].items[1].x;
+        assert!(
+            (x2_ws - x2_no - 20.0).abs() < 0.1,
+            "expected gap diff 20px, got {:.2} vs {:.2} (diff {:.2})",
+            x2_ws, x2_no, x2_ws - x2_no
+        );
+        let _ = (w1, space); // just confirming font loads
+    }
+
+    #[test]
+    fn test_word_spacing_ifc_item_carries_value() {
+        let items = vec![InlineText {
+            text: "a b".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 7.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines[0].items[0].word_spacing, 7.0);
+    }
+
+    #[test]
+    fn test_word_spacing_inherits_from_parent() {
+        let dom = HtmlParser::parse("<p><span>hello world</span></p>");
+        let sheet = CssParser::parse("p { word-spacing: 10px; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let line = find_first_line_box(&layout).expect("no line boxes");
+        assert!(!line.items.is_empty());
+        assert_eq!(line.items[0].word_spacing, 10.0,
+            "word-spacing should be inherited; got {:.2}", line.items[0].word_spacing);
+    }
+
+    #[test]
+    fn test_word_spacing_causes_earlier_wrap() {
+        // A sentence that fits on one 200px line without word-spacing must wrap with large word-spacing.
+        let ifc_ws = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 120.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+            pre: false,
+        };
+        let items = vec![InlineText {
+            text: "one two three".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 40.0,
+        }];
+        let (lines, _) = ifc_ws.layout(&items);
+        assert!(lines.len() >= 2,
+            "with large word-spacing wrapping must occur; got {} lines", lines.len());
     }
 }

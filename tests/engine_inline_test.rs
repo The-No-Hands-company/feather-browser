@@ -14,6 +14,7 @@ mod inline_tests {
             text_decoration: TextDecoration::None,
             force_break: false,
             letter_spacing: 0.0,
+            word_spacing: 0.0,
         }
     }
 

@@ -71,6 +71,7 @@ pub struct PlacedInlineItem {
     pub font_italic: bool,
     pub text_decoration: TextDecoration,
     pub letter_spacing: f32,
+    pub word_spacing: f32,
 }
 
 /// One horizontal line in an inline formatting context.
@@ -95,6 +96,8 @@ pub struct InlineText {
     pub force_break: bool,
     /// Extra space added after each character in px (CSS `letter-spacing`).
     pub letter_spacing: f32,
+    /// Extra space added to each inter-word gap in px (CSS `word-spacing`).
+    pub word_spacing: f32,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -218,6 +221,7 @@ impl InlineFormattingContext {
                             font_italic: item.font_italic,
                             text_decoration: item.text_decoration,
                             letter_spacing: item.letter_spacing,
+                            word_spacing: item.word_spacing,
                         });
                         cursor_x = x + w;
                         cur_line_height = cur_line_height.max(effective_lh);
@@ -235,14 +239,15 @@ impl InlineFormattingContext {
                 if words.is_empty() {
                     continue;
                 }
+                let space = item_font.space_advance + item.word_spacing;
                 for word in words.iter() {
                     let ls = item.letter_spacing * word.chars().count() as f32;
                     let w = item_font.measure_str(word) + ls;
-                    let gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
+                    let gap = if cursor_x == 0.0 { 0.0 } else { space };
                     if !self.nowrap && cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
                         flush_line!();
                     }
-                    let actual_gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
+                    let actual_gap = if cursor_x == 0.0 { 0.0 } else { space };
                     let x = cursor_x + actual_gap;
                     current_items.push(PlacedInlineItem {
                         text: word.to_string(),
@@ -254,6 +259,7 @@ impl InlineFormattingContext {
                         font_italic: item.font_italic,
                         text_decoration: item.text_decoration,
                         letter_spacing: item.letter_spacing,
+                        word_spacing: item.word_spacing,
                     });
                     cursor_x = x + w;
                     cur_line_height = cur_line_height.max(effective_lh);
@@ -413,6 +419,7 @@ fn collect_inline_text(
     parent_italic: bool,
     parent_decoration: TextDecoration,
     parent_letter_spacing: f32,
+    parent_word_spacing: f32,
 ) -> Vec<InlineText> {
     let mut items = Vec::new();
     for child in children {
@@ -429,6 +436,7 @@ fn collect_inline_text(
                             text_decoration: parent_decoration,
                             force_break: false,
                             letter_spacing: parent_letter_spacing,
+                            word_spacing: parent_word_spacing,
                         });
                     }
                 }
@@ -445,6 +453,7 @@ fn collect_inline_text(
                         text_decoration: parent_decoration,
                         force_break: true,
                         letter_spacing: parent_letter_spacing,
+                        word_spacing: parent_word_spacing,
                     });
                     continue;
                 }
@@ -473,6 +482,10 @@ fn collect_inline_text(
                     Some(Value::Length(n, Unit::Px)) => *n,
                     _ => parent_letter_spacing,
                 };
+                let word_spacing = match s.properties.get("word-spacing") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => parent_word_spacing,
+                };
                 collect_text_from_layout_children(
                     &child.children,
                     color,
@@ -481,6 +494,7 @@ fn collect_inline_text(
                     italic,
                     decoration,
                     letter_spacing,
+                    word_spacing,
                     &mut items,
                 );
             }
@@ -510,6 +524,10 @@ fn collect_inline_text(
                     Some(Value::Length(n, Unit::Px)) => *n,
                     _ => parent_letter_spacing,
                 };
+                let word_spacing = match s.properties.get("word-spacing") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => parent_word_spacing,
+                };
                 collect_text_from_layout_children(
                     &child.children,
                     color,
@@ -518,6 +536,7 @@ fn collect_inline_text(
                     italic,
                     decoration,
                     letter_spacing,
+                    word_spacing,
                     &mut items,
                 );
             }
@@ -535,6 +554,7 @@ fn collect_text_from_layout_children(
     font_italic: bool,
     text_decoration: TextDecoration,
     letter_spacing: f32,
+    word_spacing: f32,
     out: &mut Vec<InlineText>,
 ) {
     for child in children {
@@ -549,10 +569,11 @@ fn collect_text_from_layout_children(
                     text_decoration,
                     force_break: false,
                     letter_spacing,
+                    word_spacing,
                 });
             }
         }
-        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, text_decoration, letter_spacing, out);
+        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, text_decoration, letter_spacing, word_spacing, out);
     }
 }
 
@@ -644,7 +665,16 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
             }
             BoxType::Anonymous => 0.0,
         };
-        let mut items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration, letter_spacing);
+        let word_spacing = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                match s.properties.get("word-spacing") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => 0.0,
+                }
+            }
+            BoxType::Anonymous => 0.0,
+        };
+        let mut items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration, letter_spacing, word_spacing);
         // Inject list marker for <li> elements with list-style-type.
         let list_style = match &lb.box_type {
             BoxType::Block(s) | BoxType::Inline(s)
@@ -672,6 +702,7 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                     text_decoration: TextDecoration::None,
                     force_break: false,
                     letter_spacing: 0.0,
+                    word_spacing: 0.0,
                 });
             }
         }
@@ -1024,7 +1055,11 @@ fn layout_inline_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_hei
             Some(Value::Length(n, Unit::Px)) => *n,
             _ => 0.0,
         };
-        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration, letter_spacing);
+        let word_spacing = match s.properties.get("word-spacing") {
+            Some(Value::Length(n, Unit::Px)) => *n,
+            _ => 0.0,
+        };
+        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration, letter_spacing, word_spacing);
         if !items.is_empty() {
             let align = match s.properties.get("text-align") {
                 Some(Value::Keyword(k)) => match k.as_str() {
@@ -1147,7 +1182,11 @@ fn layout_inline_block_row(lb: &mut LayoutBox, viewport_height: f32, depth: usiz
                 Some(Value::Length(n, Unit::Px)) => *n,
                 _ => 0.0,
             };
-            let items = collect_inline_text(&child.children, font_size, color, bold, italic, decoration, letter_spacing);
+            let word_spacing = match s.properties.get("word-spacing") {
+                Some(Value::Length(n, Unit::Px)) => *n,
+                _ => 0.0,
+            };
+            let items = collect_inline_text(&child.children, font_size, color, bold, italic, decoration, letter_spacing, word_spacing);
             if !items.is_empty() {
                 let align = match s.properties.get("text-align") {
                     Some(Value::Keyword(k)) => match k.as_str() {
