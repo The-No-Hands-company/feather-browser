@@ -552,7 +552,27 @@ impl CssParser {
                 self.consume();
                 let pseudo = self.parse_identifier();
                 if !pseudo.is_empty() {
-                    sel.pseudo = Some(pseudo);
+                    // Handle functional pseudo-classes like :nth-child(2n+1).
+                    if !self.eof() && self.current() == '(' {
+                        self.consume(); // '('
+                        let mut arg = String::new();
+                        let mut depth: usize = 1;
+                        while !self.eof() {
+                            let ch = self.consume();
+                            if ch == '(' {
+                                depth += 1;
+                            } else if ch == ')' {
+                                depth -= 1;
+                                if depth == 0 {
+                                    break;
+                                }
+                            }
+                            arg.push(ch);
+                        }
+                        sel.pseudo = Some(format!("{}({})", pseudo, arg.trim()));
+                    } else {
+                        sel.pseudo = Some(pseudo);
+                    }
                 }
             } else if c == '*' {
                 self.consume(); // universal selector — matches everything

@@ -8,6 +8,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.4] — 2026-10-23
+
+### Added
+- `:nth-child(An+B)` pseudo-class — full CSS2/CSS3 An+B syntax for `:nth-child`
+  - Named keywords: `odd` (positions 1, 3, 5 …), `even` (positions 2, 4, 6 …)
+  - Plain integer: `:nth-child(3)` matches only position 3
+  - Step form: `:nth-child(3n)` matches every third element (3, 6, 9 …)
+  - Full An+B: `:nth-child(2n+1)` equals `odd`; `:nth-child(-n+3)` matches first three
+  - Functional pseudo-class argument stored as `"nth-child(arg)"` in `Selector.pseudo`
+- CSS parser updated: `parse_simple_selector` consumes balanced `(…)` after a pseudo identifier so functional pseudo-classes survive the tokenizer unchanged
+
+### Tests
+- `engine_css_test.rs`: 5 new parsing tests in `pseudo_class_tests`:
+  - `test_nth_child_functional_pseudo_parses`
+  - `test_nth_child_odd_parses`
+  - `test_nth_child_even_parses`
+  - `test_nth_child_plain_number_parses`
+  - `test_nth_child_specificity_counts_as_class`
+- `engine_style_test.rs`: `nth_child_tests` module — 5 new style-matching tests:
+  - `test_nth_child_odd_matches_positions_1_3_5`
+  - `test_nth_child_even_matches_positions_2_4`
+  - `test_nth_child_plain_number_matches_only_that_position`
+  - `test_nth_child_2n_plus_1_matches_odd`
+  - `test_nth_child_3n_matches_multiples_of_3`
+
 ## [0.5.3] — 2026-10-23
 
 ### Added

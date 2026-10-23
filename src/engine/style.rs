@@ -17,11 +17,13 @@ pub struct StyledNode {
 struct SiblingPos {
     is_first_element: bool,
     is_last_element: bool,
+    /// 1-based position among element siblings; 0 for non-element nodes.
+    element_index: usize,
 }
 
 impl SiblingPos {
     fn root() -> Self {
-        Self { is_first_element: true, is_last_element: true }
+        Self { is_first_element: true, is_last_element: true, element_index: 1 }
     }
     fn is_only(self) -> bool {
         self.is_first_element && self.is_last_element
@@ -130,7 +132,7 @@ fn style_tree_depth(
     } else {
         false
     };
-    // Collect indices of element children to compute structural positions.
+    // Collect global indices of element children to compute structural positions.
     let elem_child_indices: Vec<usize> = root
         .children
         .iter()
@@ -140,9 +142,16 @@ fn style_tree_depth(
         .collect();
     let mut children = Vec::new();
     for (idx, c) in root.children.iter().enumerate() {
+        // 1-based position among element siblings (0 for non-element nodes).
+        let element_index = elem_child_indices
+            .iter()
+            .position(|&gi| gi == idx)
+            .map(|p| p + 1)
+            .unwrap_or(0);
         let child_pos = SiblingPos {
             is_first_element: elem_child_indices.first() == Some(&idx),
             is_last_element: elem_child_indices.last() == Some(&idx),
+            element_index,
         };
         children.push(style_tree_depth(
             c,
@@ -252,6 +261,12 @@ fn simple_matches(elem: &ElementData, sel: &Selector, sibling_pos: SiblingPos) -
                     return false;
                 }
             }
+            p if p.starts_with("nth-child(") && p.ends_with(')') => {
+                let arg = &p[10..p.len() - 1];
+                if !nth_child_matches(sibling_pos.element_index, arg) {
+                    return false;
+                }
+            }
             _ => {
                 // Unknown pseudo-classes do not match.
                 return false;
@@ -259,6 +274,56 @@ fn simple_matches(elem: &ElementData, sel: &Selector, sibling_pos: SiblingPos) -
         }
     }
     true
+}
+
+/// Parse the An+B values from a CSS `:nth-child` argument string.
+/// Returns `(a, b)` such that matching positions satisfy `a*n + b == k` (n >= 0).
+fn parse_nth_ab(arg: &str) -> (i64, i64) {
+    let arg = arg.trim();
+    if let Some(n_pos) = arg.find('n') {
+        let a_str = arg[..n_pos].trim();
+        let a: i64 = if a_str.is_empty() {
+            1
+        } else if a_str == "-" {
+            -1
+        } else {
+            a_str.parse().unwrap_or(1)
+        };
+        let rest = arg[n_pos + 1..].trim();
+        let b: i64 = if rest.is_empty() { 0 } else { rest.parse().unwrap_or(0) };
+        (a, b)
+    } else {
+        // Plain integer — treat as 0n+B.
+        let b: i64 = arg.parse().unwrap_or(0);
+        (0, b)
+    }
+}
+
+/// Return true if the 1-based element position `k` is selected by `:nth-child(arg)`.
+fn nth_child_matches(k: usize, arg: &str) -> bool {
+    if k == 0 {
+        return false; // non-element nodes never match
+    }
+    let arg = arg.trim();
+    if arg == "odd" {
+        return k % 2 == 1;
+    }
+    if arg == "even" {
+        return k % 2 == 0;
+    }
+    let (a, b) = parse_nth_ab(arg);
+    let k = k as i64;
+    if a == 0 {
+        return k == b;
+    }
+    // Find integer n >= 0 s.t. a*n + b == k  =>  n = (k - b) / a
+    let diff = k - b;
+    if a > 0 {
+        diff >= 0 && diff % a == 0
+    } else {
+        // a < 0: need diff <= 0 and divisible by |a|
+        diff <= 0 && (-diff) % (-a) == 0
+    }
 }
 
 fn selector_matches(

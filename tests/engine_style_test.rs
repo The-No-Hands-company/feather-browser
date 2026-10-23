@@ -562,7 +562,7 @@ mod selector_tests {
     }
 
     #[test]
-    fn test_link_pseudo_specificity_beats_plain_tag() {
+    fn test_link_pseudo_specificity_beats_plain_tag_style() {
         // a:link color must override a color when both rules are present.
         let dom = HtmlParser::parse("<a href=\"https://example.com\">click</a>");
         let sheet = CssParser::parse("a { color: red; } a:link { color: #0000ff; }");
@@ -681,5 +681,112 @@ mod structural_pseudo_class_tests {
             "first <li> should get :first-child (higher specificity) color");
         assert_eq!(lis[1].properties.get("color"), Some(&Value::Color(black)),
             "second <li> should get plain li color");
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+mod nth_child_tests {
+    use feather::engine::{
+        css::{CssColor, CssParser, Value},
+        html::HtmlParser,
+        style::style_tree,
+    };
+
+    fn find_all_by_tag<'a>(
+        node: &'a feather::engine::style::StyledNode,
+        tag: &str,
+        out: &mut Vec<&'a feather::engine::style::StyledNode>,
+    ) {
+        if node.node.tag_name() == Some(tag) {
+            out.push(node);
+        }
+        for c in &node.children {
+            find_all_by_tag(c, tag, out);
+        }
+    }
+
+    const RED: CssColor = CssColor { r: 255, g: 0, b: 0, a: 255 };
+
+    #[test]
+    fn test_nth_child_odd_matches_positions_1_3_5() {
+        let dom = HtmlParser::parse(
+            "<ul><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li></ul>",
+        );
+        let sheet = CssParser::parse("li:nth-child(odd) { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 5);
+        // Odd positions: 1, 3, 5 → red; even positions: 2, 4 → no color
+        assert_eq!(lis[0].properties.get("color"), Some(&Value::Color(RED)), "pos 1 should match odd");
+        assert_ne!(lis[1].properties.get("color"), Some(&Value::Color(RED)), "pos 2 should NOT match odd");
+        assert_eq!(lis[2].properties.get("color"), Some(&Value::Color(RED)), "pos 3 should match odd");
+        assert_ne!(lis[3].properties.get("color"), Some(&Value::Color(RED)), "pos 4 should NOT match odd");
+        assert_eq!(lis[4].properties.get("color"), Some(&Value::Color(RED)), "pos 5 should match odd");
+    }
+
+    #[test]
+    fn test_nth_child_even_matches_positions_2_4() {
+        let dom = HtmlParser::parse(
+            "<ul><li>1</li><li>2</li><li>3</li><li>4</li></ul>",
+        );
+        let sheet = CssParser::parse("li:nth-child(even) { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 4);
+        assert_ne!(lis[0].properties.get("color"), Some(&Value::Color(RED)), "pos 1 should NOT match even");
+        assert_eq!(lis[1].properties.get("color"), Some(&Value::Color(RED)), "pos 2 should match even");
+        assert_ne!(lis[2].properties.get("color"), Some(&Value::Color(RED)), "pos 3 should NOT match even");
+        assert_eq!(lis[3].properties.get("color"), Some(&Value::Color(RED)), "pos 4 should match even");
+    }
+
+    #[test]
+    fn test_nth_child_plain_number_matches_only_that_position() {
+        let dom = HtmlParser::parse(
+            "<ul><li>1</li><li>2</li><li>3</li></ul>",
+        );
+        let sheet = CssParser::parse("li:nth-child(2) { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 3);
+        assert_ne!(lis[0].properties.get("color"), Some(&Value::Color(RED)), "pos 1 should NOT match :nth-child(2)");
+        assert_eq!(lis[1].properties.get("color"), Some(&Value::Color(RED)), "pos 2 should match :nth-child(2)");
+        assert_ne!(lis[2].properties.get("color"), Some(&Value::Color(RED)), "pos 3 should NOT match :nth-child(2)");
+    }
+
+    #[test]
+    fn test_nth_child_2n_plus_1_matches_odd() {
+        let dom = HtmlParser::parse(
+            "<ul><li>1</li><li>2</li><li>3</li><li>4</li></ul>",
+        );
+        let sheet = CssParser::parse("li:nth-child(2n+1) { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 4);
+        assert_eq!(lis[0].properties.get("color"), Some(&Value::Color(RED)), "pos 1 should match 2n+1");
+        assert_ne!(lis[1].properties.get("color"), Some(&Value::Color(RED)), "pos 2 should NOT match 2n+1");
+        assert_eq!(lis[2].properties.get("color"), Some(&Value::Color(RED)), "pos 3 should match 2n+1");
+        assert_ne!(lis[3].properties.get("color"), Some(&Value::Color(RED)), "pos 4 should NOT match 2n+1");
+    }
+
+    #[test]
+    fn test_nth_child_3n_matches_multiples_of_3() {
+        let dom = HtmlParser::parse(
+            "<ul><li>1</li><li>2</li><li>3</li><li>4</li><li>5</li><li>6</li></ul>",
+        );
+        let sheet = CssParser::parse("li:nth-child(3n) { color: red; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let mut lis = Vec::new();
+        find_all_by_tag(&styled, "li", &mut lis);
+        assert_eq!(lis.len(), 6);
+        assert_ne!(lis[0].properties.get("color"), Some(&Value::Color(RED)), "pos 1 not multiple of 3");
+        assert_ne!(lis[1].properties.get("color"), Some(&Value::Color(RED)), "pos 2 not multiple of 3");
+        assert_eq!(lis[2].properties.get("color"), Some(&Value::Color(RED)), "pos 3 should match 3n");
+        assert_ne!(lis[3].properties.get("color"), Some(&Value::Color(RED)), "pos 4 not multiple of 3");
+        assert_ne!(lis[4].properties.get("color"), Some(&Value::Color(RED)), "pos 5 not multiple of 3");
+        assert_eq!(lis[5].properties.get("color"), Some(&Value::Color(RED)), "pos 6 should match 3n");
     }
 }
