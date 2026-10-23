@@ -112,6 +112,7 @@ mod layout_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -143,6 +144,7 @@ mod layout_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -181,6 +183,7 @@ mod layout_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -236,6 +239,7 @@ mod layout_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines.len(), 1);
@@ -262,6 +266,7 @@ mod layout_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines.len(), 1);
@@ -1009,6 +1014,7 @@ mod white_space_tests {
             line_height_override: None,
             nowrap: true,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
         assert_eq!(lines.len(), 1, "nowrap must keep all text on one line regardless of width; got {} lines", lines.len());
@@ -1024,6 +1030,7 @@ mod white_space_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
         assert!(lines.len() > 1, "normal wrap must wrap text; got {} line(s)", lines.len());
@@ -1079,6 +1086,7 @@ mod white_space_pre_tests {
             line_height_override: None,
             nowrap: false,
             pre: true,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&[text_item("line one\nline two")]);
         assert_eq!(lines.len(), 2, "pre IFC must split on \\n; got {} lines", lines.len());
@@ -1096,6 +1104,7 @@ mod white_space_pre_tests {
             line_height_override: None,
             nowrap: false,
             pre: true,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&[text_item("The quick brown fox")]);
         assert_eq!(lines.len(), 1, "pre must not auto-wrap; got {} lines", lines.len());
@@ -1110,6 +1119,7 @@ mod white_space_pre_tests {
             line_height_override: None,
             nowrap: false,
             pre: true,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&[text_item("a\nb\nc")]);
         assert_eq!(lines.len(), 3, "3 segments from 2 newlines must yield 3 lines; got {}", lines.len());
@@ -1372,6 +1382,7 @@ mod letter_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines[0].items[0].letter_spacing, 0.0);
@@ -1412,6 +1423,7 @@ mod letter_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines_no_ls, _) = ifc.layout(&items_no_ls);
         let (lines_ls, _) = ifc.layout(&items_ls);
@@ -1466,6 +1478,7 @@ mod letter_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines[0].items[0].letter_spacing, 5.0);
@@ -1482,6 +1495,7 @@ mod letter_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         // Two words that would each be <40px without letter-spacing but together need wrapping with it.
         let items = vec![InlineText {
@@ -1541,6 +1555,7 @@ mod word_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines[0].items[0].word_spacing, 0.0);
@@ -1582,6 +1597,7 @@ mod word_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines_no_ws, _) = ifc.layout(&items_no_ws);
         let (lines_ws, _) = ifc.layout(&items_ws);
@@ -1616,6 +1632,7 @@ mod word_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines[0].items[0].word_spacing, 7.0);
@@ -1643,6 +1660,7 @@ mod word_spacing_tests {
             line_height_override: None,
             nowrap: false,
             pre: false,
+            text_overflow_ellipsis: false,
         };
         let items = vec![InlineText {
             text: "one two three".to_string(),
@@ -1658,5 +1676,150 @@ mod word_spacing_tests {
         let (lines, _) = ifc_ws.layout(&items);
         assert!(lines.len() >= 2,
             "with large word-spacing wrapping must occur; got {} lines", lines.len());
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+mod text_overflow_tests {
+    use feather::engine::css::{CssParser, CssColor};
+    use feather::engine::html::HtmlParser;
+    use feather::engine::layout::{InlineFormattingContext, InlineText, LayoutBox, LayoutEngine, LineBox, TextAlign, TextDecoration};
+    use feather::engine::style::style_tree;
+
+    fn find_first_line_box(lb: &LayoutBox) -> Option<&LineBox> {
+        if let Some(line) = lb.line_boxes.first() { return Some(line); }
+        for child in &lb.children {
+            if let Some(line) = find_first_line_box(child) { return Some(line); }
+        }
+        None
+    }
+
+    #[test]
+    fn test_text_overflow_ellipsis_truncates_overflowing_text() {
+        // A long word that doesn't fit in a narrow nowrap+overflow:hidden box must be truncated with …
+        let items = vec![InlineText {
+            text: "Hello world this is a very long sentence".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 0.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 60.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: true,
+            pre: false,
+            text_overflow_ellipsis: true,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines.len(), 1, "nowrap must produce exactly one line");
+        // The combined text of all items must end with the ellipsis character.
+        let combined: String = lines[0].items.iter().map(|i| i.text.as_str()).collect();
+        assert!(
+            combined.ends_with('…'),
+            "text-overflow: ellipsis must end with …, got {:?}",
+            combined
+        );
+        // The total rendered width must not exceed available_width.
+        let total_w = lines[0].items.last().map(|i| i.x + i.width).unwrap_or(0.0);
+        assert!(
+            total_w <= 60.0 + 1.0, // 1px tolerance for float rounding
+            "truncated line must not exceed available_width ({:.2} > 60)", total_w
+        );
+    }
+
+    #[test]
+    fn test_text_overflow_ellipsis_no_truncation_when_fits() {
+        // Text that fits entirely must not be modified.
+        let items = vec![InlineText {
+            text: "Hi".to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+            letter_spacing: 0.0,
+            word_spacing: 0.0,
+        }];
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 400.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: true,
+            pre: false,
+            text_overflow_ellipsis: true,
+        };
+        let (lines, _) = ifc.layout(&items);
+        assert_eq!(lines.len(), 1);
+        let combined: String = lines[0].items.iter().map(|i| i.text.as_str()).collect();
+        assert!(!combined.contains('…'), "no ellipsis when text fits: {:?}", combined);
+        assert_eq!(combined, "Hi");
+    }
+
+    #[test]
+    fn test_text_overflow_ellipsis_via_style_tree() {
+        // div with explicit width + white-space:nowrap + overflow:hidden + text-overflow:ellipsis
+        // containing a long text must produce a line ending with …
+        let dom = HtmlParser::parse("<div><span>This is a very long text that will overflow</span></div>");
+        let sheet = CssParser::parse(
+            "div { width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+        );
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let line = find_first_line_box(&layout).expect("no line boxes");
+        assert!(!line.items.is_empty(), "line box has no items");
+        let combined: String = line.items.iter().map(|i| i.text.as_str()).collect();
+        assert!(
+            combined.ends_with('…'),
+            "text-overflow: ellipsis via style tree must end with …, got {:?}",
+            combined
+        );
+    }
+
+    #[test]
+    fn test_text_overflow_without_overflow_hidden_does_not_truncate() {
+        // Without overflow: hidden, text-overflow: ellipsis must have no effect.
+        let dom = HtmlParser::parse("<div><span>This is a long text that should not be truncated</span></div>");
+        let sheet = CssParser::parse(
+            "div { width: 80px; white-space: nowrap; text-overflow: ellipsis; }",
+        );
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        let line = find_first_line_box(&layout).expect("no line boxes");
+        let combined: String = line.items.iter().map(|i| i.text.as_str()).collect();
+        assert!(
+            !combined.ends_with('…'),
+            "without overflow:hidden, text-overflow:ellipsis must not truncate; got {:?}",
+            combined
+        );
+    }
+
+    #[test]
+    fn test_text_overflow_without_nowrap_does_not_truncate() {
+        // Without white-space: nowrap, text-overflow: ellipsis must have no effect.
+        let dom = HtmlParser::parse("<div><span>This is a long text</span></div>");
+        let sheet = CssParser::parse(
+            "div { width: 40px; overflow: hidden; text-overflow: ellipsis; }",
+        );
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 800.0);
+        // Text may wrap to multiple lines but must NOT end with … via text-overflow
+        let line_opt = find_first_line_box(&layout);
+        if let Some(line) = line_opt {
+            let combined: String = line.items.iter().map(|i| i.text.as_str()).collect();
+            assert!(
+                !combined.ends_with('…'),
+                "without white-space:nowrap, text-overflow:ellipsis must not trigger; got {:?}",
+                combined
+            );
+        }
     }
 }

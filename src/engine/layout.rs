@@ -127,6 +127,8 @@ pub struct InlineFormattingContext {
     pub nowrap: bool,
     /// `white-space: pre` — preserve whitespace and honour `\n` as hard line breaks.
     pub pre: bool,
+    /// `text-overflow: ellipsis` with `overflow: hidden` — truncate overflowing text with `…`.
+    pub text_overflow_ellipsis: bool,
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -269,6 +271,95 @@ impl InlineFormattingContext {
         }
         flush_line!();
 
+        // text-overflow: ellipsis — truncate the single nowrap line when it overflows.
+        if self.text_overflow_ellipsis && self.nowrap {
+            if let Some(line) = lines.first_mut() {
+                let total_w = line.items.last().map(|i| i.x + i.width).unwrap_or(0.0);
+                if total_w > self.available_width && !line.items.is_empty() {
+                    let last = line.items.last().unwrap();
+                    let ellipsis_fm = FontMetrics::load_cached_variant(
+                        last.font_size, last.font_bold, last.font_italic,
+                    );
+                    let ellipsis_w = ellipsis_fm.measure_str("…");
+                    let budget = (self.available_width - ellipsis_w).max(0.0);
+                    let old_items = std::mem::take(&mut line.items);
+                    let mut result: Vec<PlacedInlineItem> = Vec::new();
+                    let mut done = false;
+                    for item in old_items {
+                        if done {
+                            continue;
+                        }
+                        if item.x >= budget {
+                            // Item starts beyond budget — truncate to ellipsis alone at this position.
+                            let item_fm = FontMetrics::load_cached_variant(
+                                item.font_size, item.font_bold, item.font_italic,
+                            );
+                            let ew = item_fm.measure_str("…");
+                            if item.x + ew <= self.available_width {
+                                result.push(PlacedInlineItem {
+                                    text: "…".to_string(),
+                                    x: item.x,
+                                    width: ew,
+                                    font_size: item.font_size,
+                                    color: item.color,
+                                    font_bold: item.font_bold,
+                                    font_italic: item.font_italic,
+                                    text_decoration: item.text_decoration,
+                                    letter_spacing: item.letter_spacing,
+                                    word_spacing: item.word_spacing,
+                                });
+                            } else if let Some(prev) = result.last_mut() {
+                                // Append ellipsis to the previous item.
+                                let prev_fm = FontMetrics::load_cached_variant(
+                                    prev.font_size, prev.font_bold, prev.font_italic,
+                                );
+                                let new_text = format!("{}…", prev.text);
+                                prev.width = prev_fm.measure_str(&new_text);
+                                prev.text = new_text;
+                            }
+                            done = true;
+                        } else if item.x + item.width <= budget {
+                            // Item fits entirely.
+                            result.push(item);
+                        } else {
+                            // Item partially overflows — truncate it character by character.
+                            let item_fm = FontMetrics::load_cached_variant(
+                                item.font_size, item.font_bold, item.font_italic,
+                            );
+                            let avail = budget - item.x;
+                            let mut prefix = String::new();
+                            for ch in item.text.chars() {
+                                let w = item_fm.measure_str(&format!("{}{}", prefix, ch))
+                                    + item.letter_spacing * (prefix.chars().count() + 1) as f32;
+                                if w <= avail {
+                                    prefix.push(ch);
+                                } else {
+                                    break;
+                                }
+                            }
+                            let truncated = format!("{}…", prefix);
+                            let tw = item_fm.measure_str(&truncated)
+                                + item.letter_spacing * prefix.chars().count() as f32;
+                            result.push(PlacedInlineItem {
+                                text: truncated,
+                                x: item.x,
+                                width: tw,
+                                font_size: item.font_size,
+                                color: item.color,
+                                font_bold: item.font_bold,
+                                font_italic: item.font_italic,
+                                text_decoration: item.text_decoration,
+                                letter_spacing: item.letter_spacing,
+                                word_spacing: item.word_spacing,
+                            });
+                            done = true;
+                        }
+                    }
+                    line.items = result;
+                }
+            }
+        }
+
         let total_height = line_y;
         (lines, total_height)
     }
@@ -348,12 +439,21 @@ fn build_layout_tree_depth(styled: &StyledNode, depth: usize) -> LayoutBox {
     }
 
     let display = get_display(styled);
+    // Inline-by-default HTML elements when no explicit display is set.
+    const INLINE_TAGS: &[&str] = &[
+        "span", "a", "em", "strong", "b", "i", "small", "code", "abbr",
+        "kbd", "cite", "q", "s", "del", "ins", "sub", "sup", "time",
+        "var", "samp", "mark", "bdi", "bdo", "u",
+    ];
     let box_type = match display.as_deref() {
         Some("none") => {
             return LayoutBox::new(BoxType::Anonymous);
         }
         Some("inline") => BoxType::Inline(styled.clone()),
         Some("inline-block") => BoxType::InlineBlock(styled.clone()),
+        None if styled.node.tag_name().map_or(false, |t| INLINE_TAGS.contains(&t)) => {
+            BoxType::Inline(styled.clone())
+        }
         _ => BoxType::Block(styled.clone()),
     };
 
@@ -740,6 +840,13 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 }
                 BoxType::Anonymous => (false, false),
             };
+            let text_overflow_ellipsis = nowrap && match &lb.box_type {
+                BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                    matches!(s.properties.get("text-overflow"), Some(Value::Keyword(k)) if k == "ellipsis")
+                    && matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden")
+                }
+                BoxType::Anonymous => false,
+            };
             let ifc = InlineFormattingContext {
                 font_size,
                 available_width: lb.dimensions.content.width.max(1.0),
@@ -747,6 +854,7 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 line_height_override,
                 nowrap,
                 pre,
+                text_overflow_ellipsis,
             };
             let (line_boxes, height) = ifc.layout(&items);
             lb.line_boxes = line_boxes;
@@ -1079,6 +1187,9 @@ fn layout_inline_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_hei
                 Some(Value::Keyword(k)) if k == "pre" => (false, true),
                 _ => (false, false),
             };
+            let text_overflow_ellipsis = nowrap
+                && matches!(s.properties.get("text-overflow"), Some(Value::Keyword(k)) if k == "ellipsis")
+                && matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden");
             let ifc = InlineFormattingContext {
                 font_size,
                 available_width: lb.dimensions.content.width.max(1.0),
@@ -1086,6 +1197,7 @@ fn layout_inline_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_hei
                 line_height_override,
                 nowrap,
                 pre,
+                text_overflow_ellipsis,
             };
             let (line_boxes, height) = ifc.layout(&items);
             lb.line_boxes = line_boxes;
@@ -1206,6 +1318,9 @@ fn layout_inline_block_row(lb: &mut LayoutBox, viewport_height: f32, depth: usiz
                     Some(Value::Keyword(k)) if k == "pre" => (false, true),
                     _ => (false, false),
                 };
+                let text_overflow_ellipsis = nowrap
+                    && matches!(s.properties.get("text-overflow"), Some(Value::Keyword(k)) if k == "ellipsis")
+                    && matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden");
                 let ifc = InlineFormattingContext {
                     font_size,
                     available_width: child.dimensions.content.width.max(1.0),
@@ -1213,6 +1328,7 @@ fn layout_inline_block_row(lb: &mut LayoutBox, viewport_height: f32, depth: usiz
                     line_height_override,
                     nowrap,
                     pre,
+                    text_overflow_ellipsis,
                 };
                 let (line_boxes, height) = ifc.layout(&items);
                 child.line_boxes = line_boxes;
