@@ -53,6 +53,72 @@ impl Canvas {
             }
         }
     }
+
+    pub fn fill_rounded_rect(&mut self, rect: Rect, radius: f32, color: CssColor) {
+        if radius <= 0.0 {
+            self.fill_rect(rect, color);
+            return;
+        }
+        let x0 = rect.x.max(0.0) as usize;
+        let y0 = rect.y.max(0.0) as usize;
+        let x1 = ((rect.x + rect.width) as usize).min(self.width);
+        let y1 = ((rect.y + rect.height) as usize).min(self.height);
+        for y in y0..y1 {
+            for x in x0..x1 {
+                if inside_rounded_rect(x as f32 + 0.5, y as f32 + 0.5, &rect, radius) {
+                    self.set_pixel(x, y, color);
+                }
+            }
+        }
+    }
+
+    pub fn stroke_rounded_rect(
+        &mut self,
+        outer: Rect,
+        outer_r: f32,
+        inner: Rect,
+        inner_r: f32,
+        color: CssColor,
+    ) {
+        let x0 = outer.x.max(0.0) as usize;
+        let y0 = outer.y.max(0.0) as usize;
+        let x1 = ((outer.x + outer.width) as usize).min(self.width);
+        let y1 = ((outer.y + outer.height) as usize).min(self.height);
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let px = x as f32 + 0.5;
+                let py = y as f32 + 0.5;
+                if inside_rounded_rect(px, py, &outer, outer_r)
+                    && !inside_rounded_rect(px, py, &inner, inner_r)
+                {
+                    self.set_pixel(x, y, color);
+                }
+            }
+        }
+    }
+}
+
+fn inside_rounded_rect(px: f32, py: f32, rect: &Rect, radius: f32) -> bool {
+    if px < rect.x || px >= rect.x + rect.width || py < rect.y || py >= rect.y + rect.height {
+        return false;
+    }
+    let r = radius.min(rect.width / 2.0).min(rect.height / 2.0);
+    if r <= 0.0 {
+        return true;
+    }
+    let in_left = px < rect.x + r;
+    let in_right = px >= rect.x + rect.width - r;
+    let in_top = py < rect.y + r;
+    let in_bottom = py >= rect.y + rect.height - r;
+    if (in_left || in_right) && (in_top || in_bottom) {
+        let cx = if in_left { rect.x + r } else { rect.x + rect.width - r };
+        let cy = if in_top { rect.y + r } else { rect.y + rect.height - r };
+        let dx = px - cx;
+        let dy = py - cy;
+        dx * dx + dy * dy <= r * r
+    } else {
+        true
+    }
 }
 
 /// Convert a Canvas pixel buffer to Cairo ARGB32 byte order (BGRA on little-endian).
@@ -243,7 +309,19 @@ fn render_background(canvas: &mut Canvas, lb: &LayoutBox) {
     if color.a == 0 {
         return;
     }
-    canvas.fill_rect(lb.dimensions.border_box(), color);
+    let radius = get_border_radius(lb);
+    canvas.fill_rounded_rect(lb.dimensions.border_box(), radius, color);
+}
+
+fn get_border_radius(lb: &LayoutBox) -> f32 {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("border-radius") {
+            Some(Value::Length(n, _)) => *n,
+            Some(Value::Number(n)) => *n,
+            _ => 0.0,
+        },
+        BoxType::Anonymous => 0.0,
+    }
 }
 
 fn is_border_none(lb: &LayoutBox) -> bool {
@@ -262,40 +340,33 @@ fn render_borders(canvas: &mut Canvas, lb: &LayoutBox) {
     };
     let d = &lb.dimensions;
     let bb = d.border_box();
+    let radius = get_border_radius(lb);
+    if radius > 0.0 {
+        let bw = d.border.top.min(d.border.right).min(d.border.bottom).min(d.border.left);
+        let inner = Rect {
+            x: bb.x + d.border.left,
+            y: bb.y + d.border.top,
+            width: (bb.width - d.border.left - d.border.right).max(0.0),
+            height: (bb.height - d.border.top - d.border.bottom).max(0.0),
+        };
+        let inner_r = (radius - bw).max(0.0);
+        canvas.stroke_rounded_rect(bb, radius, inner, inner_r, color);
+        return;
+    }
     canvas.fill_rect(
-        Rect {
-            x: bb.x,
-            y: bb.y,
-            width: bb.width,
-            height: d.border.top,
-        },
+        Rect { x: bb.x, y: bb.y, width: bb.width, height: d.border.top },
         color,
     );
     canvas.fill_rect(
-        Rect {
-            x: bb.x,
-            y: bb.y + bb.height - d.border.bottom,
-            width: bb.width,
-            height: d.border.bottom,
-        },
+        Rect { x: bb.x, y: bb.y + bb.height - d.border.bottom, width: bb.width, height: d.border.bottom },
         color,
     );
     canvas.fill_rect(
-        Rect {
-            x: bb.x,
-            y: bb.y,
-            width: d.border.left,
-            height: bb.height,
-        },
+        Rect { x: bb.x, y: bb.y, width: d.border.left, height: bb.height },
         color,
     );
     canvas.fill_rect(
-        Rect {
-            x: bb.x + bb.width - d.border.right,
-            y: bb.y,
-            width: d.border.right,
-            height: bb.height,
-        },
+        Rect { x: bb.x + bb.width - d.border.right, y: bb.y, width: d.border.right, height: bb.height },
         color,
     );
 }
@@ -354,7 +425,8 @@ fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32
     }
     let mut rect = lb.dimensions.border_box();
     rect.y -= scroll_y;
-    canvas.fill_rect(rect, color);
+    let radius = get_border_radius(lb);
+    canvas.fill_rounded_rect(rect, radius, color);
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -367,40 +439,33 @@ fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, o
     let d = &lb.dimensions;
     let mut bb = d.border_box();
     bb.y -= scroll_y;
+    let radius = get_border_radius(lb);
+    if radius > 0.0 {
+        let bw = d.border.top.min(d.border.right).min(d.border.bottom).min(d.border.left);
+        let inner = Rect {
+            x: bb.x + d.border.left,
+            y: bb.y + d.border.top,
+            width: (bb.width - d.border.left - d.border.right).max(0.0),
+            height: (bb.height - d.border.top - d.border.bottom).max(0.0),
+        };
+        let inner_r = (radius - bw).max(0.0);
+        canvas.stroke_rounded_rect(bb, radius, inner, inner_r, color);
+        return;
+    }
     canvas.fill_rect(
-        Rect {
-            x: bb.x,
-            y: bb.y,
-            width: bb.width,
-            height: d.border.top,
-        },
+        Rect { x: bb.x, y: bb.y, width: bb.width, height: d.border.top },
         color,
     );
     canvas.fill_rect(
-        Rect {
-            x: bb.x,
-            y: bb.y + bb.height - d.border.bottom,
-            width: bb.width,
-            height: d.border.bottom,
-        },
+        Rect { x: bb.x, y: bb.y + bb.height - d.border.bottom, width: bb.width, height: d.border.bottom },
         color,
     );
     canvas.fill_rect(
-        Rect {
-            x: bb.x,
-            y: bb.y,
-            width: d.border.left,
-            height: bb.height,
-        },
+        Rect { x: bb.x, y: bb.y, width: d.border.left, height: bb.height },
         color,
     );
     canvas.fill_rect(
-        Rect {
-            x: bb.x + bb.width - d.border.right,
-            y: bb.y,
-            width: d.border.right,
-            height: bb.height,
-        },
+        Rect { x: bb.x + bb.width - d.border.right, y: bb.y, width: d.border.right, height: bb.height },
         color,
     );
 }
