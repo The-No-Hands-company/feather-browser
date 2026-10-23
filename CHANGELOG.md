@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.5] — 2026-10-23
+
+### Added
+- `white-space: nowrap` support: text inside a `nowrap` element never wraps to a new line; all words stay on a single line box regardless of container width
+- `nowrap: bool` field added to `InlineFormattingContext`; the word-wrap flush in `IFC::layout` is gated on `!self.nowrap`
+- `"white-space"` added to the inherited property list — descendants inherit `nowrap` unless they override
+
+### Tests
+- `engine_layout_test.rs` `white_space_tests`: `test_nowrap_ifc_produces_single_line`, `test_normal_wrap_ifc_produces_multiple_lines`, `test_white_space_nowrap_via_css_pipeline`
+
 ## [0.4.4] — 2026-10-23
 
 ### Added

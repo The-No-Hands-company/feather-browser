@@ -23,6 +23,7 @@ mod inline_tests {
             available_width: 800.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&[text_item("Hello")]);
         assert_eq!(lines.len(), 1);
@@ -36,6 +37,7 @@ mod inline_tests {
             available_width: 80.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, height) =
             ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
@@ -54,6 +56,7 @@ mod inline_tests {
             available_width: 800.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, height) = ifc.layout(&[text_item("")]);
         assert_eq!(lines.len(), 0);
@@ -67,6 +70,7 @@ mod inline_tests {
             available_width: 800.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&[text_item("one two three")]);
         assert_eq!(lines.len(), 1);
@@ -83,6 +87,7 @@ mod inline_tests {
             available_width: 800.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&[text_item("X")]);
         assert_eq!(lines.len(), 1);
