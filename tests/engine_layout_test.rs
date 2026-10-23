@@ -108,6 +108,7 @@ mod layout_tests {
             available_width: 400.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -135,6 +136,7 @@ mod layout_tests {
             available_width,
             align: TextAlign::Center,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -169,6 +171,7 @@ mod layout_tests {
             available_width,
             align: TextAlign::Right,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert!(!lines.is_empty(), "layout produced no lines");
@@ -220,6 +223,7 @@ mod layout_tests {
             available_width: 800.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines.len(), 1);
@@ -242,6 +246,7 @@ mod layout_tests {
             available_width: 800.0,
             align: TextAlign::Left,
             line_height_override: None,
+            nowrap: false,
         };
         let (lines, _) = ifc.layout(&items);
         assert_eq!(lines.len(), 1);
@@ -953,5 +958,71 @@ mod br_hr_tests {
             "hr margin-top must be 8px, got {}",
             hr_box.dimensions.margin.top
         );
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
+mod white_space_tests {
+    use feather::engine::{
+        css::{CssColor, CssParser},
+        html::HtmlParser,
+        layout::{InlineFormattingContext, InlineText, LayoutEngine, TextAlign, TextDecoration},
+        style::style_tree,
+    };
+
+    fn text_item(s: &str) -> InlineText {
+        InlineText {
+            text: s.to_string(),
+            color: CssColor::DARK,
+            font_size: 16.0,
+            font_bold: false,
+            font_italic: false,
+            text_decoration: TextDecoration::None,
+            force_break: false,
+        }
+    }
+
+    #[test]
+    fn test_nowrap_ifc_produces_single_line() {
+        // With nowrap:true even a long sentence on a narrow available_width must stay on one line.
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 80.0, // too narrow for the sentence without wrap
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: true,
+        };
+        let (lines, _) = ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
+        assert_eq!(lines.len(), 1, "nowrap must keep all text on one line regardless of width; got {} lines", lines.len());
+    }
+
+    #[test]
+    fn test_normal_wrap_ifc_produces_multiple_lines() {
+        // Sanity-check: same sentence with nowrap:false wraps on the same narrow width.
+        let ifc = InlineFormattingContext {
+            font_size: 16.0,
+            available_width: 80.0,
+            align: TextAlign::Left,
+            line_height_override: None,
+            nowrap: false,
+        };
+        let (lines, _) = ifc.layout(&[text_item("The quick brown fox jumps over the lazy dog")]);
+        assert!(lines.len() > 1, "normal wrap must wrap text; got {} line(s)", lines.len());
+    }
+
+    #[test]
+    fn test_white_space_nowrap_via_css_pipeline() {
+        // Full pipeline: CSS white-space:nowrap on a narrow container must yield one line box.
+        let dom = HtmlParser::parse("<p>The quick brown fox jumps over the lazy dog</p>");
+        let sheet = CssParser::parse("p { display: block; white-space: nowrap; font-size: 16px; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 80.0); // 80px — far too narrow to fit
+        // Walk the tree looking for a layout box with line_boxes.
+        fn count_lines(lb: &feather::engine::layout::LayoutBox) -> usize {
+            let here = lb.line_boxes.len();
+            lb.children.iter().map(count_lines).fold(here, |a, b| a.max(b))
+        }
+        let max_lines = count_lines(&layout);
+        assert_eq!(max_lines, 1, "white-space:nowrap must produce 1 line box; got {max_lines}");
     }
 }

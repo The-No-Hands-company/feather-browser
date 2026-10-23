@@ -115,6 +115,8 @@ pub struct InlineFormattingContext {
     pub align: TextAlign,
     /// CSS `line-height` resolved to px. None = use font metrics.
     pub line_height_override: Option<f32>,
+    /// `white-space: nowrap` — suppress automatic line wrapping.
+    pub nowrap: bool,
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -198,7 +200,7 @@ impl InlineFormattingContext {
                 } else {
                     item_font.space_advance
                 };
-                if cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
+                if !self.nowrap && cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
                     flush_line!();
                 }
                 let actual_gap = if cursor_x == 0.0 {
@@ -589,11 +591,17 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 }
                 BoxType::Anonymous => None,
             };
+            let nowrap = match &lb.box_type {
+                BoxType::Block(s) | BoxType::Inline(s) =>
+                    matches!(s.properties.get("white-space"), Some(Value::Keyword(k)) if k == "nowrap"),
+                BoxType::Anonymous => false,
+            };
             let ifc = InlineFormattingContext {
                 font_size,
                 available_width: lb.dimensions.content.width.max(1.0),
                 align,
                 line_height_override,
+                nowrap,
             };
             let (line_boxes, height) = ifc.layout(&items);
             lb.line_boxes = line_boxes;

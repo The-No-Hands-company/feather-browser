@@ -44,6 +44,7 @@ fn style_tree_depth(
         "line-height",
         "list-style-type",
         "visibility",
+        "white-space",
     ];
     for prop in INHERITABLE {
         if !properties.contains_key(*prop) {
