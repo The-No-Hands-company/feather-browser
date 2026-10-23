@@ -1116,3 +1116,89 @@ mod white_space_pre_tests {
         assert_eq!(max_lines, 1, "white-space:pre must not auto-wrap; got {max_lines} lines");
     }
 }
+
+mod box_sizing_tests {
+    use feather::engine::css::CssParser;
+    use feather::engine::html::HtmlParser;
+    use feather::engine::layout::{LayoutEngine, Rect};
+    use feather::engine::style::style_tree;
+
+    fn vp() -> Rect { Rect { x: 0.0, y: 0.0, width: 400.0, height: 600.0 } }
+
+    #[test]
+    fn test_box_sizing_border_box_content_width() {
+        // With box-sizing:border-box, width:200px includes border+padding; content must shrink.
+        let dom = HtmlParser::parse(
+            "<div style=\"box-sizing:border-box;width:200px;padding:10px;border-top-width:2px;border-left-width:2px;border-right-width:2px;border-bottom-width:2px;\">x</div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 600.0);
+        fn find_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+            if let feather::engine::layout::BoxType::Block(s) = &lb.box_type {
+                if s.node.tag_name() == Some("div") { return Some(lb); }
+            }
+            lb.children.iter().find_map(find_div)
+        }
+        let div = find_div(&layout).expect("div not found");
+        // content_width = 200 - 2*2(border) - 2*10(padding) = 176
+        assert_eq!(div.dimensions.content.width, 176.0,
+            "border-box: content width must be 200 - borders - padding");
+    }
+
+    #[test]
+    fn test_box_sizing_content_box_default() {
+        // Default (content-box): width:100px is the content width; borders+padding add on top.
+        let dom = HtmlParser::parse(
+            "<div style=\"width:100px;padding:10px;border-top-width:2px;border-left-width:2px;border-right-width:2px;border-bottom-width:2px;\">x</div>",
+        );
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 600.0);
+        fn find_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+            if let feather::engine::layout::BoxType::Block(s) = &lb.box_type {
+                if s.node.tag_name() == Some("div") { return Some(lb); }
+            }
+            lb.children.iter().find_map(find_div)
+        }
+        let div = find_div(&layout).expect("div not found");
+        assert_eq!(div.dimensions.content.width, 100.0,
+            "content-box default: content width must equal specified width");
+    }
+
+    #[test]
+    fn test_min_height_clamps_short_block() {
+        // A block with no content but min-height:50px must have height >= 50.
+        let dom = HtmlParser::parse("<div style=\"min-height:50px;\"></div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 600.0);
+        fn find_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+            if let feather::engine::layout::BoxType::Block(s) = &lb.box_type {
+                if s.node.tag_name() == Some("div") { return Some(lb); }
+            }
+            lb.children.iter().find_map(find_div)
+        }
+        let div = find_div(&layout).expect("div not found");
+        assert!(div.dimensions.content.height >= 50.0,
+            "min-height:50px must produce height >= 50; got {}", div.dimensions.content.height);
+    }
+
+    #[test]
+    fn test_max_height_clamps_tall_block() {
+        // A block with explicit height:200px and max-height:80px must be clamped to 80.
+        let dom = HtmlParser::parse("<div style=\"height:200px;max-height:80px;\">x</div>");
+        let sheet = CssParser::parse("");
+        let styled = style_tree(&dom.root, &sheet);
+        let layout = LayoutEngine::build(&styled, 600.0);
+        fn find_div(lb: &feather::engine::layout::LayoutBox) -> Option<&feather::engine::layout::LayoutBox> {
+            if let feather::engine::layout::BoxType::Block(s) = &lb.box_type {
+                if s.node.tag_name() == Some("div") { return Some(lb); }
+            }
+            lb.children.iter().find_map(find_div)
+        }
+        let div = find_div(&layout).expect("div not found");
+        assert_eq!(div.dimensions.content.height, 80.0,
+            "max-height:80px must clamp height:200px down to 80");
+    }
+}

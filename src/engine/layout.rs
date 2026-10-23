@@ -668,8 +668,18 @@ fn calculate_block_width(lb: &mut LayoutBox, containing: &Dimensions, viewport_h
 
     let fixed = margin_left + margin_right + border_left + border_right + pad_left + pad_right;
 
+    let border_box = matches!(
+        styled.properties.get("box-sizing"),
+        Some(Value::Keyword(k)) if k == "border-box"
+    );
+
     let mut width = if let Some(w) = explicit_width {
-        w
+        if border_box {
+            // Specified width is the border-box width; subtract borders + padding for content width.
+            (w - border_left - border_right - pad_left - pad_right).max(0.0)
+        } else {
+            w
+        }
     } else {
         // auto: fill available space
         (cw - fixed).max(0.0)
@@ -792,6 +802,23 @@ fn calculate_block_height(lb: &mut LayoutBox, viewport_height: f32, containing_w
                 lb.dimensions.content.height = *h / 100.0 * containing_width;
             }
             _ => {}
+        }
+        // min-height clamps up, max-height clamps down
+        let min_h = match s.properties.get("min-height") {
+            Some(Value::Length(n, Unit::Px)) => Some(*n),
+            Some(Value::Length(n, Unit::Percent)) => Some(*n / 100.0 * viewport_height),
+            _ => None,
+        };
+        let max_h = match s.properties.get("max-height") {
+            Some(Value::Length(n, Unit::Px)) => Some(*n),
+            Some(Value::Length(n, Unit::Percent)) => Some(*n / 100.0 * viewport_height),
+            _ => None,
+        };
+        if let Some(min) = min_h {
+            lb.dimensions.content.height = lb.dimensions.content.height.max(min);
+        }
+        if let Some(max) = max_h {
+            lb.dimensions.content.height = lb.dimensions.content.height.min(max);
         }
     }
 }
