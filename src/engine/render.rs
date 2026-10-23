@@ -163,10 +163,12 @@ fn with_opacity(c: CssColor, opacity: f32) -> CssColor {
 #[cfg(feature = "feather-renderer")]
 fn get_box_opacity(lb: &LayoutBox) -> f32 {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("opacity") {
-            Some(Value::Number(n)) => n.clamp(0.0, 1.0),
-            _ => 1.0,
-        },
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+            match s.properties.get("opacity") {
+                Some(Value::Number(n)) => n.clamp(0.0, 1.0),
+                _ => 1.0,
+            }
+        }
         BoxType::Anonymous => 1.0,
     }
 }
@@ -315,19 +317,22 @@ fn render_background(canvas: &mut Canvas, lb: &LayoutBox) {
 
 fn get_border_radius(lb: &LayoutBox) -> f32 {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("border-radius") {
-            Some(Value::Length(n, _)) => *n,
-            Some(Value::Number(n)) => *n,
-            _ => 0.0,
-        },
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+            match s.properties.get("border-radius") {
+                Some(Value::Length(n, _)) => *n,
+                Some(Value::Number(n)) => *n,
+                _ => 0.0,
+            }
+        }
         BoxType::Anonymous => 0.0,
     }
 }
 
 fn is_border_none(lb: &LayoutBox) -> bool {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) =>
-            matches!(s.properties.get("border-style"), Some(Value::Keyword(k)) if k == "none"),
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+            matches!(s.properties.get("border-style"), Some(Value::Keyword(k)) if k == "none")
+        }
         BoxType::Anonymous => false,
     }
 }
@@ -473,7 +478,7 @@ fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, o
 #[cfg(feature = "feather-renderer")]
 fn is_img_element(lb: &LayoutBox) -> bool {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) => {
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
             matches!(&s.node.node_type, NodeType::Element(e) if e.tag_name == "img")
         }
         BoxType::Anonymous => false,
@@ -546,7 +551,7 @@ fn render_img_placeholder(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, fo
     );
 
     // centered alt text
-    if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
+    if let BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) = &lb.box_type {
         if let NodeType::Element(e) = &s.node.node_type {
             if let Some(alt) = e.attributes.get("alt") {
                 if !alt.is_empty() {
@@ -592,23 +597,25 @@ fn render_text_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
 
 fn has_overflow_hidden(lb: &LayoutBox) -> bool {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) =>
-            matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden"),
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+            matches!(s.properties.get("overflow"), Some(Value::Keyword(k)) if k == "hidden")
+        }
         BoxType::Anonymous => false,
     }
 }
 
 fn is_visibility_hidden(lb: &LayoutBox) -> bool {
     match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) =>
-            matches!(s.properties.get("visibility"), Some(Value::Keyword(k)) if k == "hidden"),
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+            matches!(s.properties.get("visibility"), Some(Value::Keyword(k)) if k == "hidden")
+        }
         BoxType::Anonymous => false,
     }
 }
 
 fn get_color(lb: &LayoutBox, prop: &str) -> Option<CssColor> {
     let styled = match &lb.box_type {
-        BoxType::Block(s) | BoxType::Inline(s) => s,
+        BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => s,
         BoxType::Anonymous => return None,
     };
     match styled.properties.get(prop) {
