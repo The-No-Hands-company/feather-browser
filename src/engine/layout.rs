@@ -442,6 +442,7 @@ fn collect_text_from_layout_children(
 fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f32, depth: usize) {
     calculate_block_width(lb, containing, viewport_height);
     calculate_block_position(lb, containing);
+    apply_relative_offset(lb);
     // <img> elements: set fixed dimensions from HTML attributes, skip child layout.
     if let BoxType::Block(s) | BoxType::Inline(s) = &lb.box_type {
         if let NodeType::Element(e) = &s.node.node_type {
@@ -624,6 +625,36 @@ fn calculate_block_position(lb: &mut LayoutBox, containing: &Dimensions) {
         + lb.dimensions.margin.top
         + lb.dimensions.border.top
         + lb.dimensions.padding.top;
+}
+
+fn apply_relative_offset(lb: &mut LayoutBox) {
+    let styled = match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) => s.clone(),
+        BoxType::Anonymous => return,
+    };
+    let is_relative = matches!(
+        styled.properties.get("position"),
+        Some(Value::Keyword(k)) if k == "relative"
+    );
+    if !is_relative {
+        return;
+    }
+    let dx = match styled.properties.get("left") {
+        Some(Value::Length(n, Unit::Px)) => *n,
+        _ => match styled.properties.get("right") {
+            Some(Value::Length(n, Unit::Px)) => -n,
+            _ => 0.0,
+        },
+    };
+    let dy = match styled.properties.get("top") {
+        Some(Value::Length(n, Unit::Px)) => *n,
+        _ => match styled.properties.get("bottom") {
+            Some(Value::Length(n, Unit::Px)) => -n,
+            _ => 0.0,
+        },
+    };
+    lb.dimensions.content.x += dx;
+    lb.dimensions.content.y += dy;
 }
 
 fn layout_block_children(lb: &mut LayoutBox, viewport_height: f32, depth: usize) {

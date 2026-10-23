@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.3.7] — 2026-10-23
+
+### Added
+- `apply_relative_offset()` in `layout.rs` — reads `position: relative` from styled node and shifts `dimensions.content.x/y` by `left`/`top` (or `-right`/`-bottom` when set instead)
+- `position: relative` applied after `calculate_block_position` in `layout_block`; normal-flow space reserved at original coordinates
+
+### Tests
+- `engine_css_test.rs`: `test_position_relative_parsed`, `test_position_offset_top_left_parsed`
+- `engine_layout_test.rs` (`position_relative_tests`): top+left offsets applied, static box unaffected, negative top shifts up
+
 ## [0.3.6] — 2026-10-22
 
 ### Added
