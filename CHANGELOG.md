@@ -8,6 +8,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-23
+
+### Milestone: CSS Box Model & Sizing
+
+### Added
+- `box-sizing: border-box` — when set, the specified `width` is the border-box width; content width = `width - border_left - border_right - padding_left - padding_right`; `content-box` remains the default
+- `min-height: Npx` — clamps block height up after `height` / IFC-derived height is computed
+- `max-height: Npx` — clamps block height down; applied after `min-height`
+- Both `min-height` and `max-height` also accept `%` (resolved against viewport height)
+
+### Tests
+- `engine_layout_test.rs` `box_sizing_tests`: `test_box_sizing_border_box_content_width`, `test_box_sizing_content_box_default`, `test_min_height_clamps_short_block`, `test_max_height_clamps_tall_block`
+
 ## [0.4.9] — 2026-10-23
 
 ### Added
