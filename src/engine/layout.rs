@@ -117,6 +117,8 @@ pub struct InlineFormattingContext {
     pub line_height_override: Option<f32>,
     /// `white-space: nowrap` — suppress automatic line wrapping.
     pub nowrap: bool,
+    /// `white-space: pre` — preserve whitespace and honour `\n` as hard line breaks.
+    pub pre: bool,
 }
 
 #[cfg(feature = "feather-renderer")]
@@ -189,43 +191,65 @@ impl InlineFormattingContext {
             }
             let item_font =
                 FontMetrics::load_cached_variant(item.font_size, item.font_bold, item.font_italic);
-            let words: Vec<&str> = item.text.split_whitespace().collect();
-            if words.is_empty() {
-                continue;
-            }
-            for word in words.iter() {
-                let w = item_font.measure_str(word);
-                let gap = if cursor_x == 0.0 {
-                    0.0
-                } else {
-                    item_font.space_advance
-                };
-                if !self.nowrap && cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
-                    flush_line!();
+            let effective_lh = self
+                .line_height_override
+                .unwrap_or(item_font.line_height)
+                .max(item_font.line_height);
+            if self.pre {
+                // white-space:pre — honour \n as hard breaks; place each segment verbatim.
+                let segments: Vec<&str> = item.text.split('\n').collect();
+                for (i, segment) in segments.iter().enumerate() {
+                    if !segment.is_empty() {
+                        let w = item_font.measure_str(segment);
+                        let x = cursor_x;
+                        current_items.push(PlacedInlineItem {
+                            text: segment.to_string(),
+                            x,
+                            width: w,
+                            font_size: item.font_size,
+                            color: item.color,
+                            font_bold: item.font_bold,
+                            font_italic: item.font_italic,
+                            text_decoration: item.text_decoration,
+                        });
+                        cursor_x = x + w;
+                        cur_line_height = cur_line_height.max(effective_lh);
+                        cur_baseline = cur_baseline.max(item_font.ascent);
+                    }
+                    if i < segments.len() - 1 {
+                        flush_line!();
+                        if current_items.is_empty() {
+                            line_y += effective_lh;
+                        }
+                    }
                 }
-                let actual_gap = if cursor_x == 0.0 {
-                    0.0
-                } else {
-                    item_font.space_advance
-                };
-                let x = cursor_x + actual_gap;
-                current_items.push(PlacedInlineItem {
-                    text: word.to_string(),
-                    x,
-                    width: w,
-                    font_size: item.font_size,
-                    color: item.color,
-                    font_bold: item.font_bold,
-                    font_italic: item.font_italic,
-                    text_decoration: item.text_decoration,
-                });
-                cursor_x = x + w;
-                let effective_lh = self
-                    .line_height_override
-                    .unwrap_or(item_font.line_height)
-                    .max(item_font.line_height);
-                cur_line_height = cur_line_height.max(effective_lh);
-                cur_baseline = cur_baseline.max(item_font.ascent);
+            } else {
+                let words: Vec<&str> = item.text.split_whitespace().collect();
+                if words.is_empty() {
+                    continue;
+                }
+                for word in words.iter() {
+                    let w = item_font.measure_str(word);
+                    let gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
+                    if !self.nowrap && cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
+                        flush_line!();
+                    }
+                    let actual_gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
+                    let x = cursor_x + actual_gap;
+                    current_items.push(PlacedInlineItem {
+                        text: word.to_string(),
+                        x,
+                        width: w,
+                        font_size: item.font_size,
+                        color: item.color,
+                        font_bold: item.font_bold,
+                        font_italic: item.font_italic,
+                        text_decoration: item.text_decoration,
+                    });
+                    cursor_x = x + w;
+                    cur_line_height = cur_line_height.max(effective_lh);
+                    cur_baseline = cur_baseline.max(item_font.ascent);
+                }
             }
         }
         flush_line!();
@@ -591,10 +615,13 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 }
                 BoxType::Anonymous => None,
             };
-            let nowrap = match &lb.box_type {
-                BoxType::Block(s) | BoxType::Inline(s) =>
-                    matches!(s.properties.get("white-space"), Some(Value::Keyword(k)) if k == "nowrap"),
-                BoxType::Anonymous => false,
+            let (nowrap, pre) = match &lb.box_type {
+                BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("white-space") {
+                    Some(Value::Keyword(k)) if k == "nowrap" => (true, false),
+                    Some(Value::Keyword(k)) if k == "pre"    => (false, true),
+                    _ => (false, false),
+                },
+                BoxType::Anonymous => (false, false),
             };
             let ifc = InlineFormattingContext {
                 font_size,
@@ -602,6 +629,7 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                 align,
                 line_height_override,
                 nowrap,
+                pre,
             };
             let (line_boxes, height) = ifc.layout(&items);
             lb.line_boxes = line_boxes;
