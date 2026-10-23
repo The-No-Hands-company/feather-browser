@@ -8,6 +8,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/). Versioning: [S
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-10-23
+
+### Added
+- `opacity: 0.0–1.0` support: the `opacity` CSS property is now applied during rendering; background colors, border colors, and inline text colors all multiply by the element's effective opacity (parent × own), clamped to `[0.0, 1.0]`
+- `with_opacity(color, opacity)` helper in `render.rs` scales a `CssColor`'s alpha channel
+- Opacity cascades through the render tree: each box's effective opacity is its own `opacity` value multiplied by the parent's, matching browser compositing semantics
+
+### Tests
+- `engine_render_test.rs` `opacity_tests`: `test_opacity_zero_makes_background_invisible`, `test_opacity_half_reduces_background_alpha`
+
 ## [0.4.2] — 2026-10-23
 
 ### Added

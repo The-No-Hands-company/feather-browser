@@ -78,7 +78,7 @@ impl Painter {
         #[cfg(feature = "feather-renderer")]
         {
             let font = crate::engine::font::FontMetrics::load_cached(font_size);
-            render_box(&mut canvas, layout_root, &font, viewport.y, 0);
+            render_box(&mut canvas, layout_root, &font, viewport.y, 0, 1.0);
         }
         #[cfg(not(feature = "feather-renderer"))]
         {
@@ -90,23 +90,41 @@ impl Painter {
 }
 
 #[cfg(feature = "feather-renderer")]
+fn with_opacity(c: CssColor, opacity: f32) -> CssColor {
+    CssColor { a: (c.a as f32 * opacity).round() as u8, ..c }
+}
+
+#[cfg(feature = "feather-renderer")]
+fn get_box_opacity(lb: &LayoutBox) -> f32 {
+    match &lb.box_type {
+        BoxType::Block(s) | BoxType::Inline(s) => match s.properties.get("opacity") {
+            Some(Value::Number(n)) => n.clamp(0.0, 1.0),
+            _ => 1.0,
+        },
+        BoxType::Anonymous => 1.0,
+    }
+}
+
+#[cfg(feature = "feather-renderer")]
 fn render_box(
     canvas: &mut Canvas,
     lb: &LayoutBox,
     font: &FontMetrics,
     scroll_y: f32,
     depth: usize,
+    opacity: f32,
 ) {
     if depth >= 512 {
         return;
     }
-    render_background_scrolled(canvas, lb, scroll_y);
-    render_borders_scrolled(canvas, lb, scroll_y);
+    let eff_opacity = (opacity * get_box_opacity(lb)).clamp(0.0, 1.0);
+    render_background_scrolled(canvas, lb, scroll_y, eff_opacity);
+    render_borders_scrolled(canvas, lb, scroll_y, eff_opacity);
     // img placeholder: paint grey box + alt text, skip normal text render.
     if is_img_element(lb) {
         render_img_placeholder(canvas, lb, scroll_y, font);
         for child in &lb.children {
-            render_box(canvas, child, font, scroll_y, depth + 1);
+            render_box(canvas, child, font, scroll_y, depth + 1, eff_opacity);
         }
         return;
     }
@@ -127,6 +145,7 @@ fn render_box(
                     item.font_italic,
                 );
                 let mut pen_x_f: f32 = origin_x + item.x;
+                let text_color = with_opacity(item.color, eff_opacity);
                 for ch in item.text.chars() {
                     let glyph = item_font.rasterize_cached(ch);
                     blit_glyph(
@@ -134,7 +153,7 @@ fn render_box(
                         &glyph,
                         pen_x_f.round() as i32,
                         baseline_y,
-                        item.color,
+                        text_color,
                     );
                     pen_x_f += glyph.advance_width;
                 }
@@ -148,7 +167,7 @@ fn render_box(
                             canvas.set_pixel(
                                 (deco_x + dx).max(0) as usize,
                                 y.max(0) as usize,
-                                item.color,
+                                text_color,
                             );
                         }
                     }
@@ -158,7 +177,7 @@ fn render_box(
                             canvas.set_pixel(
                                 (deco_x + dx).max(0) as usize,
                                 y.max(0) as usize,
-                                item.color,
+                                text_color,
                             );
                         }
                     }
@@ -180,7 +199,7 @@ fn render_box(
                 || cb.y >= pb.y + pb.height;
             if outside { continue; }
         }
-        render_box(canvas, child, font, scroll_y, depth + 1);
+        render_box(canvas, child, font, scroll_y, depth + 1, eff_opacity);
     }
 }
 
@@ -307,8 +326,8 @@ pub fn blit_glyph(
 }
 
 #[cfg(feature = "feather-renderer")]
-fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
-    let color = get_color(lb, "background-color").unwrap_or(CssColor::TRANSPARENT);
+fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, opacity: f32) {
+    let color = with_opacity(get_color(lb, "background-color").unwrap_or(CssColor::TRANSPARENT), opacity);
     if color.a == 0 {
         return;
     }
@@ -318,10 +337,10 @@ fn render_background_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32
 }
 
 #[cfg(feature = "feather-renderer")]
-fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32) {
-    let color = match get_color(lb, "border-color") {
-        Some(c) => c,
-        None => return,
+fn render_borders_scrolled(canvas: &mut Canvas, lb: &LayoutBox, scroll_y: f32, opacity: f32) {
+    let color = match get_color(lb, "border-color").map(|c| with_opacity(c, opacity)) {
+        Some(c) if c.a > 0 => c,
+        _ => return,
     };
     let d = &lb.dimensions;
     let mut bb = d.border_box();
