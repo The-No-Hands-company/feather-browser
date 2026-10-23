@@ -70,6 +70,7 @@ pub struct PlacedInlineItem {
     pub font_bold: bool,
     pub font_italic: bool,
     pub text_decoration: TextDecoration,
+    pub letter_spacing: f32,
 }
 
 /// One horizontal line in an inline formatting context.
@@ -92,6 +93,8 @@ pub struct InlineText {
     pub text_decoration: TextDecoration,
     /// When true, flush the current line immediately (models a <br> break).
     pub force_break: bool,
+    /// Extra space added after each character in px (CSS `letter-spacing`).
+    pub letter_spacing: f32,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -202,7 +205,8 @@ impl InlineFormattingContext {
                 let segments: Vec<&str> = item.text.split('\n').collect();
                 for (i, segment) in segments.iter().enumerate() {
                     if !segment.is_empty() {
-                        let w = item_font.measure_str(segment);
+                        let ls = item.letter_spacing * segment.chars().count() as f32;
+                        let w = item_font.measure_str(segment) + ls;
                         let x = cursor_x;
                         current_items.push(PlacedInlineItem {
                             text: segment.to_string(),
@@ -213,6 +217,7 @@ impl InlineFormattingContext {
                             font_bold: item.font_bold,
                             font_italic: item.font_italic,
                             text_decoration: item.text_decoration,
+                            letter_spacing: item.letter_spacing,
                         });
                         cursor_x = x + w;
                         cur_line_height = cur_line_height.max(effective_lh);
@@ -231,7 +236,8 @@ impl InlineFormattingContext {
                     continue;
                 }
                 for word in words.iter() {
-                    let w = item_font.measure_str(word);
+                    let ls = item.letter_spacing * word.chars().count() as f32;
+                    let w = item_font.measure_str(word) + ls;
                     let gap = if cursor_x == 0.0 { 0.0 } else { item_font.space_advance };
                     if !self.nowrap && cursor_x + gap + w > self.available_width && cursor_x > 0.0 {
                         flush_line!();
@@ -247,6 +253,7 @@ impl InlineFormattingContext {
                         font_bold: item.font_bold,
                         font_italic: item.font_italic,
                         text_decoration: item.text_decoration,
+                        letter_spacing: item.letter_spacing,
                     });
                     cursor_x = x + w;
                     cur_line_height = cur_line_height.max(effective_lh);
@@ -405,6 +412,7 @@ fn collect_inline_text(
     parent_bold: bool,
     parent_italic: bool,
     parent_decoration: TextDecoration,
+    parent_letter_spacing: f32,
 ) -> Vec<InlineText> {
     let mut items = Vec::new();
     for child in children {
@@ -420,6 +428,7 @@ fn collect_inline_text(
                             font_italic: parent_italic,
                             text_decoration: parent_decoration,
                             force_break: false,
+                            letter_spacing: parent_letter_spacing,
                         });
                     }
                 }
@@ -435,6 +444,7 @@ fn collect_inline_text(
                         font_italic: parent_italic,
                         text_decoration: parent_decoration,
                         force_break: true,
+                        letter_spacing: parent_letter_spacing,
                     });
                     continue;
                 }
@@ -459,6 +469,10 @@ fn collect_inline_text(
                     Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
                     _ => parent_decoration,
                 };
+                let letter_spacing = match s.properties.get("letter-spacing") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => parent_letter_spacing,
+                };
                 collect_text_from_layout_children(
                     &child.children,
                     color,
@@ -466,6 +480,7 @@ fn collect_inline_text(
                     bold,
                     italic,
                     decoration,
+                    letter_spacing,
                     &mut items,
                 );
             }
@@ -491,6 +506,10 @@ fn collect_inline_text(
                     Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
                     _ => parent_decoration,
                 };
+                let letter_spacing = match s.properties.get("letter-spacing") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => parent_letter_spacing,
+                };
                 collect_text_from_layout_children(
                     &child.children,
                     color,
@@ -498,6 +517,7 @@ fn collect_inline_text(
                     bold,
                     italic,
                     decoration,
+                    letter_spacing,
                     &mut items,
                 );
             }
@@ -514,6 +534,7 @@ fn collect_text_from_layout_children(
     font_bold: bool,
     font_italic: bool,
     text_decoration: TextDecoration,
+    letter_spacing: f32,
     out: &mut Vec<InlineText>,
 ) {
     for child in children {
@@ -527,10 +548,11 @@ fn collect_text_from_layout_children(
                     font_italic,
                     text_decoration,
                     force_break: false,
+                    letter_spacing,
                 });
             }
         }
-        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, text_decoration, out);
+        collect_text_from_layout_children(&child.children, color, font_size, font_bold, font_italic, text_decoration, letter_spacing, out);
     }
 }
 
@@ -613,7 +635,16 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
             }
             BoxType::Anonymous => TextDecoration::None,
         };
-        let mut items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration);
+        let letter_spacing = match &lb.box_type {
+            BoxType::Block(s) | BoxType::Inline(s) | BoxType::InlineBlock(s) => {
+                match s.properties.get("letter-spacing") {
+                    Some(Value::Length(n, Unit::Px)) => *n,
+                    _ => 0.0,
+                }
+            }
+            BoxType::Anonymous => 0.0,
+        };
+        let mut items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration, letter_spacing);
         // Inject list marker for <li> elements with list-style-type.
         let list_style = match &lb.box_type {
             BoxType::Block(s) | BoxType::Inline(s)
@@ -640,6 +671,7 @@ fn layout_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_height: f3
                     font_italic: italic,
                     text_decoration: TextDecoration::None,
                     force_break: false,
+                    letter_spacing: 0.0,
                 });
             }
         }
@@ -988,7 +1020,11 @@ fn layout_inline_block(lb: &mut LayoutBox, containing: &Dimensions, viewport_hei
             Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
             _ => TextDecoration::None,
         };
-        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration);
+        let letter_spacing = match s.properties.get("letter-spacing") {
+            Some(Value::Length(n, Unit::Px)) => *n,
+            _ => 0.0,
+        };
+        let items = collect_inline_text(&lb.children, font_size, color, bold, italic, decoration, letter_spacing);
         if !items.is_empty() {
             let align = match s.properties.get("text-align") {
                 Some(Value::Keyword(k)) => match k.as_str() {
@@ -1107,7 +1143,11 @@ fn layout_inline_block_row(lb: &mut LayoutBox, viewport_height: f32, depth: usiz
                 Some(Value::Keyword(k)) if k == "line-through" => TextDecoration::LineThrough,
                 _ => TextDecoration::None,
             };
-            let items = collect_inline_text(&child.children, font_size, color, bold, italic, decoration);
+            let letter_spacing = match s.properties.get("letter-spacing") {
+                Some(Value::Length(n, Unit::Px)) => *n,
+                _ => 0.0,
+            };
+            let items = collect_inline_text(&child.children, font_size, color, bold, italic, decoration, letter_spacing);
             if !items.is_empty() {
                 let align = match s.properties.get("text-align") {
                     Some(Value::Keyword(k)) => match k.as_str() {

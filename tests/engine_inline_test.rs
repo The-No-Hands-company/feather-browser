@@ -13,6 +13,7 @@ mod inline_tests {
             font_italic: false,
             text_decoration: TextDecoration::None,
             force_break: false,
+            letter_spacing: 0.0,
         }
     }
 

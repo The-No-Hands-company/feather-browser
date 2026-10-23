@@ -64,6 +64,7 @@ fn style_tree_depth(
         "font-weight",
         "font-style",
         "line-height",
+        "letter-spacing",
         "list-style-type",
         "visibility",
         "white-space",
