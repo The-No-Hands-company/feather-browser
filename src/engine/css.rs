@@ -377,6 +377,7 @@ pub struct Selector {
     pub tag_name: Option<String>,
     pub id: Option<String>,
     pub classes: Vec<String>,
+    pub pseudo: Option<String>,
     pub ancestor: Option<(Combinator, Box<Selector>)>,
 }
 
@@ -390,7 +391,7 @@ impl Selector {
             .unwrap_or((0, 0, 0));
         (
             ai + self.id.is_some() as usize,
-            ac + self.classes.len(),
+            ac + self.classes.len() + self.pseudo.is_some() as usize,
             at + self.tag_name.is_some() as usize,
         )
     }
@@ -521,6 +522,7 @@ impl CssParser {
                 tag_name: right.tag_name,
                 id: right.id,
                 classes: right.classes,
+                pseudo: right.pseudo,
                 ancestor: Some((combinator, Box::new(left))),
             };
             depth += 1;
@@ -533,6 +535,7 @@ impl CssParser {
             tag_name: None,
             id: None,
             classes: Vec::new(),
+            pseudo: None,
             ancestor: None,
         };
         while !self.eof() {
@@ -543,6 +546,12 @@ impl CssParser {
             } else if c == '.' {
                 self.consume();
                 sel.classes.push(self.parse_identifier());
+            } else if c == ':' {
+                self.consume();
+                let pseudo = self.parse_identifier();
+                if !pseudo.is_empty() {
+                    sel.pseudo = Some(pseudo);
+                }
             } else if c == '*' {
                 self.consume(); // universal selector — matches everything
             } else if c.is_alphanumeric() || c == '-' || c == '_' {

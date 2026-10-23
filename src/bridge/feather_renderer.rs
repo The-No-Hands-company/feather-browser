@@ -161,6 +161,8 @@ impl FeatherRenderer {
         // UA stylesheet hides chrome; extra_css carries linked stylesheets fetched off-thread.
         let ua_css = "head{display:none}style{display:none}script{display:none}title{display:none}\
             a{color:#0000EE;text-decoration:underline}\
+            a:link{color:#0000EE;text-decoration:underline}\
+            a:visited{color:#551A8B;text-decoration:underline}\
             h1,h2,h3,h4,h5,h6{display:block;font-weight:bold}\
             h1{font-size:32px;margin-top:21px;margin-bottom:21px}\
             h2{font-size:24px;margin-top:19px;margin-bottom:19px}\

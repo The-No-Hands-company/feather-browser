@@ -489,4 +489,60 @@ mod selector_tests {
             "author font-size:48px must override UA 32px"
         );
     }
+
+    #[test]
+    fn test_link_pseudo_applies_to_anchor_with_href() {
+        // a:link rule must apply its color to an <a href="..."> element.
+        let dom = HtmlParser::parse("<a href=\"https://example.com\">click</a>");
+        let sheet = CssParser::parse("a:link { color: #0000ff; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let a = find_by_tag(&styled, "a").expect("a not found");
+        assert_eq!(
+            a.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            "a:link must apply blue color to <a href=...>"
+        );
+    }
+
+    #[test]
+    fn test_link_pseudo_does_not_apply_without_href() {
+        // a:link must NOT match an <a> with no href attribute.
+        let dom = HtmlParser::parse("<a>not a hyperlink</a>");
+        let sheet = CssParser::parse("a:link { color: #0000ff; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let a = find_by_tag(&styled, "a").expect("a not found");
+        assert_ne!(
+            a.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            "a:link must not apply to <a> without href"
+        );
+    }
+
+    #[test]
+    fn test_visited_pseudo_never_matches() {
+        // :visited matches nothing in this engine version (no history tracking).
+        let dom = HtmlParser::parse("<a href=\"https://example.com\">visited?</a>");
+        let sheet = CssParser::parse("a:visited { color: #551a8b; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let a = find_by_tag(&styled, "a").expect("a not found");
+        assert_ne!(
+            a.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 85, g: 26, b: 139, a: 255 })),
+            "a:visited must not match any link (no history)"
+        );
+    }
+
+    #[test]
+    fn test_link_pseudo_specificity_beats_plain_tag() {
+        // a:link color must override a color when both rules are present.
+        let dom = HtmlParser::parse("<a href=\"https://example.com\">click</a>");
+        let sheet = CssParser::parse("a { color: red; } a:link { color: #0000ff; }");
+        let styled = style_tree(&dom.root, &sheet);
+        let a = find_by_tag(&styled, "a").expect("a not found");
+        assert_eq!(
+            a.properties.get("color"),
+            Some(&Value::Color(CssColor { r: 0, g: 0, b: 255, a: 255 })),
+            "a:link (higher specificity) must override plain a color"
+        );
+    }
 }
